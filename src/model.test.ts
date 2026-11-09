@@ -1,0 +1,6 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createProject,stats,markStep,coordinate,stepCells,recommendation} from './model.ts';
+test('demo grid has unique coordinates and deterministic counts',()=>{const p=createProject();assert.equal(p.grid.length,400);assert.equal(new Set(p.grid.map(c=>`${c.row},${c.column}`)).size,400);assert.deepEqual(stats(p.grid).map(c=>[c.code,c.count]),[['P1',38],['G1',16],['Y1',17],['I1',7],['W1',13]]);});
+test('completion is shared between row and column views; clearing and reverse are consistent',()=>{let p=createProject();p.step=3;const expected=stepCells(p).length;p=markStep(p,true);assert.equal(p.grid.filter(c=>c.isCompleted).length,expected);const column={...p,strategy:'column' as const,step:6};assert.ok(stepCells(column).some(c=>c.isCompleted));assert.equal(markStep(p,false).grid.filter(c=>c.isCompleted).length,0);assert.equal(coordinate({...p,reverse:true,step:0}),19);assert.equal(markStep({...p,step:0},true).grid.filter(c=>c.isCompleted).length,expected);});
+test('recommendation uses structural run counts',()=>{const r=recommendation(createProject());assert.ok(r.row>0&&r.column>0);assert.equal(r.strategy,r.row<=r.column?'row':'column');});
