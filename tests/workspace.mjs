@@ -27,6 +27,9 @@ const drag = async () => {
 };
 try {
   await page.goto(url);
+  await page.mouse.move(100,200);await page.mouse.wheel(0,120);await page.waitForTimeout(200);
+  assert.ok(await page.evaluate(()=>window.scrollY)>0,'Studio page no longer scrolls');
+  await page.evaluate(()=>window.scrollTo(0,0));
   await page.getByRole('button', {name:'Try Sample Pattern ↗'}).click();
   await page.getByRole('button', {name:'Start Beading →'}).click();
   await page.locator('.stage').scrollIntoViewIfNeeded();
@@ -67,9 +70,10 @@ try {
   await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
   const beforeScroll = await transform();
   const scrollY = await page.evaluate(()=>window.scrollY);
+  assert.equal(await page.locator('.stage').evaluate(el=>{const event=new WheelEvent('wheel',{deltaY:10,bubbles:true,cancelable:true});el.dispatchEvent(event);return event.defaultPrevented;}),false,'Unmodified wheel should not be intercepted');
   await page.mouse.wheel(0,150); await page.waitForTimeout(250);
   assert.equal(await transform(),beforeScroll,'Normal wheel zoomed');
-  assert.ok(await page.evaluate(()=>window.scrollY)>scrollY,'Normal wheel did not scroll webpage');
+  assert.equal(await page.evaluate(()=>window.scrollY),scrollY,'Crafting workspace unexpectedly scrolled');
   await page.locator('.stage').scrollIntoViewIfNeeded();
   const center = await page.locator('.stage').boundingBox();
   await page.mouse.move(center.x+center.width/2,center.y+center.height/2);
@@ -114,5 +118,5 @@ try {
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Mobile horizontal overflow');
   assert.deepEqual(errors,[]);
-  console.log('PASS: mouse/touch Hand and Select, drag suppression, Space shortcut, wheel/page scrolling, Ctrl/Meta zoom, buttons, pinch, saved progress, mobile overflow.');
+  console.log('PASS: mouse/touch Hand and Select, drag suppression, Space shortcut, unmodified wheel without zoom, Ctrl/Meta zoom, buttons, pinch, saved progress, mobile overflow.');
 } finally { await browser.close(); }

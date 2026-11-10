@@ -35,7 +35,7 @@ npm test
 npm run build
 ```
 
-Five model tests cover exact demo totals, coordinates, shared progress, clearing, direction, empty steps, recommendation, rectangular grids, palette-based statistics, and legacy storage compatibility. Chromium smoke checks exercised mobile navigation, upload preview, completion, strategy preservation, undo, reload, zoom, and horizontal overflow. Automated browser tooling was used outside the application dependencies.
+Nine model/focus tests cover exact demo totals, coordinates, shared progress, clearing, direction, empty steps, recommendation, rectangular grids, palette-based statistics, and legacy storage compatibility. Chromium smoke checks exercised mobile navigation, upload preview, completion, strategy preservation, undo, reload, zoom, and horizontal overflow. Automated browser tooling was used outside the application dependencies.
 
 ## Cloud configuration status
 
@@ -83,8 +83,20 @@ The browser regression checks mouse/touch selection and panning, drag suppressio
 
 The overview highlights the chosen row/column. Tap the preview, use Previous/Next, or move the step slider to explore the strategy and starting direction without changing bead completion. Start Beading continues from that previewed step.
 
-In the workspace, navigation automatically centers the active step and preserves zoom. Focus step can restore it after manual panning; Fit still shows the whole grid. On phones, focus accounts for the fixed task panel. The panel keeps navigation, completion, and the total remaining count visible; Details expands per-color remaining/required counts, an ordered bead-position strip (including empty positions and completion checkmarks), undo, and strategy controls. Collapse returns more room to the pattern. Panel details scroll independently on small screens.
+In the workspace, navigation reveals an offscreen active step with minimal movement and preserves zoom; an already-visible step stays in place. Focus step can restore it after manual panning; Fit still shows the whole grid. On phones, focus accounts for the fixed task panel. The panel keeps navigation, completion, and the total remaining count visible; Details expands per-color remaining/required counts, an ordered bead-position strip (including empty positions and completion checkmarks), undo, and strategy controls. Collapse returns more room to the pattern. Panel details scroll independently on small screens.
 
 Grid dimensions, axis limits, coordinates, progress, palette counts, and viewport sizing derive from project data, including rectangular patterns. Loading a different saved project does not discard other projects. The original flower data, `pindou.projects.v1` storage key, and PR #3 input behavior remain unchanged. This does not add image parsing or a pattern-import editor.
 
 `npm run test:browser` now runs both the PR #3 input regression suite and `tests/steps.mjs`, which checks preview navigation, reverse limits, rectangular/tall grids, viewport centering with zoom retention, remaining counts/undo, the collapsible fixed mobile panel, and retention of legacy progress and multiple projects. No deployment configuration is changed.
+
+## V1.2 — viewport beading sessions
+
+The workspace is a viewport-sized tool (the studio/overview remain normal webpages). Phones and tablets in portrait have a canvas above a persistent task dock. Landscape phones, landscape tablets, and desktop use a canvas with a task panel on the right. Essential controls never require vertical webpage scrolling: coordinate, total/completed/remaining counts, computed color chips, Previous/Next, and a separate Mark Step Complete action. Only optional task details and unusually large color lists scroll internally.
+
+Canvas-edge arrows follow row/column direction, including reversed strategies; navigation never marks beads complete. Automatic focus uses actual rendered bounds and moves only when the active step is outside the usable canvas. It preserves zoom, and manual pan never changes the step. Focus step explicitly centers the current strip; Fit still resets the view.
+
+Focus mode removes optional task detail and extra project chrome while retaining tools, progress, color quantities, and navigation. **Exit Focus** is always visible; leave Focus before exiting the project. It uses no browser fullscreen or orientation-lock API. Rotation keeps the tool, step, zoom, and completion data, remeasures the canvas, and reveals the active step only if needed. `100dvh` (with a `100vh` fallback), `viewport-fit=cover`, and safe-area padding keep the workspace within supported mobile browser viewports. Native browser toolbar/home-indicator behavior still requires physical-device review.
+
+The `pindou.projects.v1` key, IDs, cell colors, and completion schema are unchanged. No migration, clearing of storage, or cloud synchronization is introduced. Upload recognition remains preview-only, and the original chart is not transcribed. Large-grid browser tests use an explicitly synthetic 40-column × 51-row fixture, not guessed source-image data.
+
+Validation commands are `npm ci`, `npm test`, `npm run build`, and `npm run test:browser` against a running dev server or production preview. See [V1.2 QA](docs/V1.2-QA.md) for automated viewports, coverage, and real-device limitations. GitHub Pages configuration is unchanged; this feature branch must be reviewed and merged before the existing deployment workflow can publish it.

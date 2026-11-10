@@ -12,6 +12,8 @@ import {
   type Project,
 } from "./model";
 import "./style.css";
+import "./workspace.css";
+import { stepPanDelta } from "./viewport";
 import { Grid, CELL } from "./Grid";
 import { StepNavigation, StepPositions } from "./StepTools";
 import { useCanvasInteraction } from "./useCanvasInteraction";
@@ -61,6 +63,8 @@ function App() {
   const [select, setSelect] = useState(false);
   const [undo, setUndo] = useState<Project[]>([]);
   const [panelExpanded, setPanelExpanded] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+  const [stageSize, setStageSize] = useState({ width: 1, height: 1 });
   const file = useRef<HTMLInputElement>(null);
   const counts = stats(p.grid, p.palette),
     total = counts.reduce((a, c) => a + c.count, 0),
@@ -100,33 +104,22 @@ function App() {
     setPage("overview");
     setUpload(null);
   };
-  const focus = () => {
+  const focus = (force = true) => {
     const el = stage.current;
     const svg = el?.querySelector("svg");
-    const rect = svg?.querySelector<SVGRectElement>("[data-active-step]");
-    const matrix = svg?.getScreenCTM();
-    if (!el || !rect || !matrix) return;
-    const bounds = rect.getBBox();
-    const point = new DOMPoint(
-      bounds.x + bounds.width / 2,
-      bounds.y + bounds.height / 2,
-    ).matrixTransform(matrix);
-    const viewport = el.getBoundingClientRect();
-    const panel = document.querySelector(".task-panel");
-    const panelTop =
-      panel && getComputedStyle(panel).position === "fixed"
-        ? panel.getBoundingClientRect().top
-        : viewport.bottom;
-    const top = Math.max(0, viewport.top);
-    const bottom = Math.min(viewport.bottom, panelTop);
-    if (bottom <= top) return;
-    const transform = new DOMMatrix(
-      getComputedStyle(svg!.parentElement!).transform,
+    const active = svg?.querySelector<SVGRectElement>("[data-active-step]");
+    if (!el || !active || !svg) return;
+    const delta = stepPanDelta(
+      active.getBoundingClientRect(),
+      el.getBoundingClientRect(),
+      p.strategy,
+      force,
     );
-    setPan({
-      x: transform.m41 + viewport.left + viewport.width / 2 - point.x,
-      y: transform.m42 + top + (bottom - top) / 2 - point.y,
-    });
+    if (Math.abs(delta.x) < 0.5 && Math.abs(delta.y) < 0.5) return;
+    const transform = new DOMMatrix(
+      getComputedStyle(svg.parentElement!).transform,
+    );
+    setPan({ x: transform.m41 + delta.x, y: transform.m42 + delta.y });
   };
   const toggle = ({ x, y }: { x: number; y: number }) => {
     const svg = stage.current?.querySelector("svg");
@@ -151,7 +144,25 @@ function App() {
 
   useEffect(() => {
     if (page !== "workspace") return;
-    const frame = requestAnimationFrame(focus);
+    document.body.classList.add("workspace-open");
+    return () => document.body.classList.remove("workspace-open");
+  }, [page]);
+  useEffect(() => {
+    if (page !== "workspace" || !stage.current) return;
+    const element = stage.current;
+    const measure = () =>
+      setStageSize({
+        width: element.clientWidth,
+        height: element.clientHeight,
+      });
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [page]);
+  useEffect(() => {
+    if (page !== "workspace") return;
+    const frame = requestAnimationFrame(() => focus(false));
     return () => cancelAnimationFrame(frame);
   }, [
     page,
@@ -161,14 +172,9 @@ function App() {
     p.reverse,
     p.rows,
     p.columns,
-    panelExpanded,
+    stageSize.width,
+    stageSize.height,
   ]);
-  useEffect(() => {
-    if (page !== "workspace" || !stage.current) return;
-    const observer = new ResizeObserver(() => focus());
-    observer.observe(stage.current);
-    return () => observer.disconnect();
-  }, [page, p.step, p.strategy, p.reverse]);
   return (
     <>
       <header>
@@ -182,7 +188,13 @@ function App() {
           </small>
         </nav>
       </header>
-      <main className={page === "workspace" ? "workspace-main" : undefined}>
+      <main
+        className={
+          page === "workspace"
+            ? `workspace-main${focusMode ? " focus-mode" : ""}`
+            : undefined
+        }
+      >
         {error && (
           <p className="notice" role="alert">
             {error}
@@ -453,13 +465,25 @@ function App() {
           <>
             <div className="workspace-heading">
               <div>
-                <button className="back" onClick={() => setPage("overview")}>
-                  ← Pattern overview
+                <button
+                  className="back"
+                  aria-label="Pattern overview"
+                  title="Exit workspace"
+                  onClick={() => setPage("overview")}
+                >
+                  ←
                 </button>
-                <h2>
+                <h2 title={p.name}>
                   {p.name} <span className="tag">DEMO</span>
                 </h2>
               </div>
+              <button
+                className="focus-mode-toggle"
+                aria-pressed={focusMode}
+                onClick={() => setFocusMode((v) => !v)}
+              >
+                {focusMode ? "Exit Focus" : "Focus mode"}
+              </button>
               <div className="progress-info">
                 <b>{percent}%</b> complete
                 <div className="progress">
@@ -513,7 +537,8 @@ function App() {
                     className="canvas-pattern"
                     style={{
                       aspectRatio: `${p.columns * CELL + 40} / ${p.rows * CELL + 40}`,
-                      maxWidth: `calc((var(--stage-height) - 32px) * ${(p.columns * CELL + 40) / (p.rows * CELL + 40)})`,
+                      width: `${Math.max(1, Math.min(stageSize.width - 32, ((stageSize.height - 32) * (p.columns * CELL + 40)) / (p.rows * CELL + 40)))}px`,
+                      maxWidth: "none",
                       transform: `translate(${pan.x}px,${pan.y}px) scale(${scale})`,
                     }}
                   >
@@ -526,7 +551,45 @@ function App() {
                       ? "Drag to pan · Ctrl/⌘ + scroll to zoom"
                       : "Tap a bead to toggle · Hold Space to pan"}
                   </span>
-                  <button onClick={focus}>⌖ Focus step</button>
+                  <div
+                    className="canvas-step-nav"
+                    role="group"
+                    aria-label="Canvas step navigation"
+                  >
+                    <button
+                      aria-label="Previous canvas step"
+                      title="Previous step (does not mark complete)"
+                      disabled={p.step === 0}
+                      onClick={() => setP({ ...p, step: p.step - 1 })}
+                    >
+                      {p.strategy === "row"
+                        ? p.reverse
+                          ? "↓"
+                          : "↑"
+                        : p.reverse
+                          ? "→"
+                          : "←"}
+                    </button>
+                    <span>
+                      {p.strategy === "row" ? "Row" : "Column"}{" "}
+                      {coordinate(p) + 1}
+                    </span>
+                    <button
+                      aria-label="Next canvas step"
+                      title="Next step (does not mark complete)"
+                      disabled={p.step === stepCount(p) - 1}
+                      onClick={() => setP({ ...p, step: p.step + 1 })}
+                    >
+                      {p.strategy === "row"
+                        ? p.reverse
+                          ? "↑"
+                          : "↓"
+                        : p.reverse
+                          ? "←"
+                          : "→"}
+                    </button>
+                  </div>
+                  <button onClick={() => focus()}>⌖ Focus step</button>
                 </div>
               </section>
               <aside
@@ -534,7 +597,10 @@ function App() {
                 aria-label="Beading task"
               >
                 <div className="task-heading">
-                  <div className="eyebrow">YOUR CURRENT STEP</div>
+                  <h2 className="step-title">
+                    {p.strategy === "row" ? "Row" : "Column"}{" "}
+                    {coordinate(p) + 1} <small>/ {stepCount(p)}</small>
+                  </h2>
                   <button
                     className="panel-toggle"
                     aria-expanded={panelExpanded}
@@ -544,17 +610,41 @@ function App() {
                     {panelExpanded ? "− Less" : "+ Details"}
                   </button>
                 </div>
-                <h2 className="step-title">
-                  {p.strategy === "row" ? "Row" : "Column"} {coordinate(p) + 1}{" "}
-                  <small>/ {stepCount(p)}</small>
-                </h2>
                 <p className="remaining-summary" aria-live="polite">
-                  {cells.filter((c) => !c.isCompleted).length} remaining{" "}
-                  <span>of {cells.length} beads</span>
+                  <span>
+                    {cells.length} total ·{" "}
+                    {cells.filter((c) => c.isCompleted).length} completed ·{" "}
+                  </span>
+                  {cells.filter((c) => !c.isCompleted).length} remaining
                 </p>
+                <div
+                  className="color-chips"
+                  role="list"
+                  tabIndex={0}
+                  aria-label="Remaining beads by color"
+                >
+                  {stats(cells, p.palette)
+                    .filter((c) => c.count)
+                    .map((c) => (
+                      <span
+                        className="color-chip"
+                        role="listitem"
+                        key={c.code}
+                        aria-label={`${c.code}, ${c.count - c.done} remaining of ${c.count}`}
+                      >
+                        <i style={{ background: c.hex }} />
+                        <b>{c.code}</b> × {c.count - c.done}
+                      </span>
+                    ))}
+                  {!cells.length && (
+                    <span className="empty-step" role="listitem">
+                      Empty step · continue when ready
+                    </span>
+                  )}
+                </div>
                 <StepNavigation p={p} update={setP} />
                 <button
-                  className="primary full"
+                  className={`primary full complete-action${cells.length && cells.every((c) => c.isCompleted) ? " step-completed" : ""}`}
                   disabled={!cells.length}
                   onClick={() =>
                     change(markStep(p, !cells.every((c) => c.isCompleted)))
@@ -564,7 +654,13 @@ function App() {
                     ? "↶ Clear this step"
                     : "✓ Mark step complete"}
                 </button>
-                <div className="task-details" id="task-details">
+                <div
+                  className="task-details"
+                  id="task-details"
+                  role="region"
+                  aria-label="Task details"
+                  tabIndex={0}
+                >
                   <div className="palette step-counts">
                     {stats(cells, p.palette)
                       .filter((c) => c.count)
