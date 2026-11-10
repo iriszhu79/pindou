@@ -47,7 +47,7 @@ export function StepPositions({ p }: { p: Project }) {
         {p.strategy === "row" ? "Column" : "Row"} positions · ✓ completed ·
         dotted = empty
       </p>
-      <ol aria-label="Current step bead positions">
+      <ol aria-label="Current step bead positions" tabIndex={0}>
         {stepLine(p).map((c, i) => (
           <li key={i}>
             <span

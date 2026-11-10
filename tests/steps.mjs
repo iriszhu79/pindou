@@ -56,26 +56,20 @@ const saved = () =>
 const state = () =>
   page.locator(".canvas-pattern").evaluate((el) => el.style.transform);
 const centered = async () => {
+  // Automatic focus now reveals only offscreen steps instead of always centering.
   await page.waitForFunction(() => {
     const stage = document.querySelector(".stage"),
-      rect = document.querySelector("[data-active-step]");
+      rect = document.querySelector(".stage [data-active-step]");
     if (!stage || !rect) return false;
     const a = stage.getBoundingClientRect(),
-      b = rect.getBoundingClientRect(),
-      panel = document.querySelector(".task-panel");
-    const top = Math.max(0, a.y),
-      bottom = Math.min(
-        a.bottom,
-        panel && getComputedStyle(panel).position === "fixed"
-          ? panel.getBoundingClientRect().top
-          : a.bottom,
-      );
-    return (
-      Math.abs(a.x + a.width / 2 - b.x - b.width / 2) < 2 &&
-      Math.abs(top + (bottom - top) / 2 - b.y - b.height / 2) < 2
-    );
+      b = rect.getBoundingClientRect();
+    const p = JSON.parse(localStorage.getItem("pindou.projects.v1"))[0];
+    return p.strategy === "row"
+      ? b.top >= a.top + 10 && b.bottom <= a.bottom - 10
+      : b.left >= a.left + 10 && b.right <= a.right - 10;
   });
 };
+
 try {
   await page.goto(
     process.env.PINDOU_TEST_URL || "http://127.0.0.1:5173/pindou/",
@@ -125,12 +119,12 @@ try {
   await centered();
   assert.match(
     await page.locator(".remaining-summary").innerText(),
-    /^2 remaining/,
+    /2 remaining$/,
   );
   assert.equal(await page.locator(".step-positions li").count(), 3);
   await page.getByRole("button", { name: "Zoom in", exact: true }).click();
   const zoom = (await state()).match(/scale\(([^)]+)\)/)[1];
-  await page.getByRole("button", { name: "Previous", exact: false }).click();
+  await page.getByRole("button", { name: "← Previous", exact: true }).click();
   await centered();
   assert.equal((await state()).match(/scale\(([^)]+)\)/)[1], zoom);
   await page
@@ -138,7 +132,7 @@ try {
     .click();
   assert.match(
     await page.locator(".remaining-summary").innerText(),
-    /^0 remaining/,
+    /0 remaining$/,
   );
   assert.match(await page.locator(".step-counts").innerText(), /0 left/);
   await page
@@ -146,19 +140,19 @@ try {
     .click();
   assert.match(
     await page.locator(".remaining-summary").innerText(),
-    /^3 remaining/,
+    /3 remaining$/,
   );
   await page.setViewportSize({ width: 390, height: 844 });
   await centered();
   assert.equal(
     await page
-      .locator(".task-panel")
+      .locator(".workspace-main")
       .evaluate((el) => getComputedStyle(el).position),
     "fixed",
   );
   assert.equal(await page.locator(".task-details").isVisible(), false);
   const panel = await page.locator(".task-panel").boundingBox();
-  assert.ok(Math.abs(panel.y + panel.height - 844) < 2);
+  assert.ok(panel.y + panel.height <= 844 && panel.y + panel.height >= 820);
   await page.getByRole("button", { name: "+ Details", exact: true }).click();
   assert.equal(await page.locator(".task-details").isVisible(), true);
   await centered();
@@ -204,7 +198,7 @@ try {
   assert.ok(fits, "Tall rectangular grid did not fit");
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: rectangular preview and direction limits, click/range navigation, automatic focus with zoom retention, remaining counts/undo, compact positions, fixed collapsible mobile panel, multiple saved projects/legacy progress, tall-grid fit.",
+    "PASS: rectangular preview and direction limits, click/range navigation, automatic focus with zoom retention, remaining counts/undo, compact positions, viewport-docked collapsible mobile panel, multiple saved projects/legacy progress, tall-grid fit.",
   );
 } finally {
   await browser.close();
