@@ -26,7 +26,7 @@ Vite serves the app under `/pindou/` (port 5173 by default). Verify the page in 
 
 `src/model.ts` contains a separate synthetic 20 × 20 flower with 91 beads: P1 38, G1 16, Y1 17, I1 7, W1 13. These are demo codes. It is **not** a transcription of `public/samples/sample-pattern.jpg`. The original chart (40 × 51, labeled 1,179 beads) has not been verified cell by cell. Its counts are never presented as computed demo totals. Existing PRD and all reference/sample images are preserved.
 
-Replace `createProject` with validated structured pattern data to support future parsed patterns; presentation and grid/statistics logic are separate. The current persisted-data validator intentionally accepts this Phase 1 demo only.
+Replace `createProject` with validated structured pattern data to support future parsed patterns; presentation and grid/statistics logic are separate. The persisted-data validator accepts rectangular projects with positive dimensions, a complete row-major grid, and a valid per-project palette; legacy flower projects retain their saved progress unchanged.
 
 ## Validation
 
@@ -35,7 +35,7 @@ npm test
 npm run build
 ```
 
-Three model tests cover exact demo totals, coordinates, shared progress, clearing, direction, empty steps, and recommendation. Chromium smoke checks exercised mobile navigation, upload preview, completion, strategy preservation, undo, reload, zoom, and horizontal overflow. Automated browser tooling was used outside the application dependencies.
+Five model tests cover exact demo totals, coordinates, shared progress, clearing, direction, empty steps, recommendation, rectangular grids, palette-based statistics, and legacy storage compatibility. Chromium smoke checks exercised mobile navigation, upload preview, completion, strategy preservation, undo, reload, zoom, and horizontal overflow. Automated browser tooling was used outside the application dependencies.
 
 ## Cloud configuration status
 
@@ -78,3 +78,13 @@ The existing `pindou.projects.v1` LocalStorage key and project schema are unchan
 Install dependencies with `npm ci` and Chromium with `npx playwright install chromium` (on Linux, install browser OS dependencies as needed). Start `npm run dev` in one terminal, then run `npm run test:browser` in another. For an existing Chromium installation, set `CHROMIUM_PATH=/path/to/chromium`. To test a local production preview instead, set `PINDOU_TEST_URL=http://127.0.0.1:4173/pindou/` after running `npm run build` and `npm run preview -- --port 4173`.
 
 The browser regression checks mouse/touch selection and panning, drag suppression, Space, native wheel scrolling, Ctrl/Command zoom, zoom buttons, pinch, reload persistence, and mobile overflow. It uses an isolated browser context and does not modify your browser's saved projects. Physical Mac trackpad acceptance testing remains useful; modifier wheel behavior is verified using Chromium input events.
+
+### V1.1 strategy preview and task panel
+
+The overview highlights the chosen row/column. Tap the preview, use Previous/Next, or move the step slider to explore the strategy and starting direction without changing bead completion. Start Beading continues from that previewed step.
+
+In the workspace, navigation automatically centers the active step and preserves zoom. Focus step can restore it after manual panning; Fit still shows the whole grid. On phones, focus accounts for the fixed task panel. The panel keeps navigation, completion, and the total remaining count visible; Details expands per-color remaining/required counts, an ordered bead-position strip (including empty positions and completion checkmarks), undo, and strategy controls. Collapse returns more room to the pattern. Panel details scroll independently on small screens.
+
+Grid dimensions, axis limits, coordinates, progress, palette counts, and viewport sizing derive from project data, including rectangular patterns. Loading a different saved project does not discard other projects. The original flower data, `pindou.projects.v1` storage key, and PR #3 input behavior remain unchanged. This does not add image parsing or a pattern-import editor.
+
+`npm run test:browser` now runs both the PR #3 input regression suite and `tests/steps.mjs`, which checks preview navigation, reverse limits, rectangular/tall grids, viewport centering with zoom retention, remaining counts/undo, the collapsible fixed mobile panel, and retention of legacy progress and multiple projects. No deployment configuration is changed.
