@@ -18,7 +18,7 @@ Vite serves the app under `/pindou/` (port 5173 by default). Verify the page in 
 
 - Home, image upload preview, recent project, pattern overview, and interactive workspace.
 - Shared cell-level completion for rows/columns in either direction; undo (last 30 edits, current session).
-- Pan, button/wheel zoom, two-finger pinch, fit, focus current step, and tap-to-toggle Select mode.
+- Hand Mode for mouse/touch panning, Select Mode for bead completion, temporary Hand Mode with Space, modifier-wheel/button zoom, two-finger pinch, fit, and focus current step.
 - Computed palette statistics, coordinate labels, current-step bead positions, and deterministic color-run recommendation.
 - LocalStorage persistence, malformed-storage fallback, and visible storage-failure reporting. Data is device/browser/origin specific; uploads are temporary previews and are never parsed or persisted.
 
@@ -63,3 +63,18 @@ Open https://github.com/iriszhu79/pindou/actions and select the latest **Deploy 
 - **Manual run button missing:** the workflow must first exist on the default branch and include `workflow_dispatch`.
 
 For a local production check, run `npm run build` then `npm run preview` and open the displayed address under `/pindou/`. LocalStorage is origin-specific, so local development progress will not automatically appear on GitHub Pages.
+
+## V1.1 workspace controls
+
+- **Hand:** drag with a mouse or finger to pan. The grab cursor becomes grabbing while held. Clicking/tapping never changes completion or the active step.
+- **Select:** click/tap a bead to toggle its checkmark. Moving more than 5 screen pixels cancels selection; pinches and cancelled gestures never select a bead. Completed beads show a checkmark while retaining their original color.
+- **Space:** hold while the canvas/page is focused to temporarily pan; release to restore Select. Focused buttons/selects retain their normal keyboard behavior. Switching modes leaves zoom, pan, and progress intact.
+- **Scroll:** normal wheel/two-finger trackpad scroll moves the page. Hold **Ctrl** or **Command** while scrolling over the canvas to zoom. The +/− buttons work in either mode; two-finger touchscreen pinch is also supported. Fit resets the view; Focus step recenters the active row/column.
+
+The existing `pindou.projects.v1` LocalStorage key and project schema are unchanged; no reset or migration is required.
+
+### Browser interaction regression test
+
+Install dependencies with `npm ci` and Chromium with `npx playwright install chromium` (on Linux, install browser OS dependencies as needed). Start `npm run dev` in one terminal, then run `npm run test:browser` in another. For an existing Chromium installation, set `CHROMIUM_PATH=/path/to/chromium`. To test a local production preview instead, set `PINDOU_TEST_URL=http://127.0.0.1:4173/pindou/` after running `npm run build` and `npm run preview -- --port 4173`.
+
+The browser regression checks mouse/touch selection and panning, drag suppression, Space, native wheel scrolling, Ctrl/Command zoom, zoom buttons, pinch, reload persistence, and mobile overflow. It uses an isolated browser context and does not modify your browser's saved projects. Physical Mac trackpad acceptance testing remains useful; modifier wheel behavior is verified using Chromium input events.
