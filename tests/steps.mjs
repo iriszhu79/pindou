@@ -150,20 +150,22 @@ try {
       .evaluate((el) => getComputedStyle(el).position),
     "fixed",
   );
-  assert.equal(await page.locator(".task-details").isVisible(), false);
-  const panel = await page.locator(".task-panel").boundingBox();
+  assert.equal(await page.locator(".drawer-body").isVisible(), false);
+  const panel = await page.locator(".mobile-drawer").boundingBox();
   assert.ok(panel.y + panel.height <= 844 && panel.y + panel.height >= 820);
-  await page.getByRole("button", { name: "+ Details", exact: true }).click();
-  assert.equal(await page.locator(".task-details").isVisible(), true);
+  await page.locator(".drawer-toggle").click();
+  assert.equal(await page.locator(".drawer-body").isVisible(), true);
   await centered();
   await page.screenshot({
     path: "/tmp/pindou-task-expanded.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "− Less", exact: true }).click();
-  await page.getByRole("button", { name: "Next →", exact: true }).click();
+  await page.locator(".drawer-toggle").click();
+  await page
+    .getByRole("button", { name: "Next canvas step", exact: true })
+    .click();
   await centered();
-  assert.equal(await page.locator(".task-details").isVisible(), false);
+  assert.equal(await page.locator(".drawer-body").isVisible(), false);
   assert.equal(
     await page.evaluate(
       () => document.documentElement.scrollWidth > innerWidth,

@@ -35,7 +35,7 @@ npm test
 npm run build
 ```
 
-Eighteen model/hit/route/focus tests cover exact demo totals, coordinates, shared progress, clearing, direction, empty steps, recommendation, rectangular grids, palette-based statistics, and legacy storage compatibility. Chromium smoke checks exercised mobile navigation, upload preview, completion, strategy preservation, undo, reload, zoom, and horizontal overflow. Playwright is a development dependency; it is not bundled into the application.
+Twenty model/hit/route/focus/drawer tests cover exact demo totals, coordinates, shared progress, clearing, direction, empty steps, recommendation, rectangular grids, palette-based statistics, and legacy storage compatibility. Chromium smoke checks exercised mobile navigation, upload preview, completion, strategy preservation, undo, reload, zoom, and horizontal overflow. Playwright is a development dependency; it is not bundled into the application.
 
 ## Cloud configuration status
 
@@ -91,7 +91,7 @@ Grid dimensions, axis limits, coordinates, progress, palette counts, and viewpor
 
 ## V1.2 — viewport beading sessions
 
-The workspace is a viewport-sized tool (the studio/overview remain normal webpages). Phones and tablets in portrait have a canvas above a persistent task dock. Landscape phones, landscape tablets, and desktop use a canvas with a task panel on the right. Essential controls never require vertical webpage scrolling: coordinate, total/completed/remaining counts, computed color chips, Previous/Next, and a separate Mark Step Complete action. Only optional task details and unusually large color lists scroll internally.
+The workspace is a viewport-sized tool (the studio/overview remain normal webpages). Phones and tablets in portrait have a canvas above a persistent task dock. Landscape phones, landscape tablets, and desktop use a canvas with a task panel on the right. Navigation and counts never require vertical webpage scrolling. V1.4 phone portrait uses a compact drawer for explicit completion/settings; other layouts retain their existing task panel. Only optional task details and unusually large color lists scroll internally.
 
 Canvas-edge arrows follow row/column direction, including reversed strategies; navigation never marks beads complete. Automatic focus uses actual rendered bounds and moves only when the active step is outside the usable canvas. It preserves zoom, and manual pan never changes the step. Focus step explicitly centers the current strip; Fit still resets the view.
 
@@ -115,4 +115,16 @@ Focus Mode now removes the secondary route bar, folds dock actions together, and
 
 Hit detection uses the current SVG matrix after checking it against rendered fill geometry, with an axis-aligned rendered-rectangle fallback for CSS-transform inconsistencies. Pointer down/up must identify the same cell. It does not apply iPhone offsets or trust rounded native SVG hit boxes near tiny borders. The implementation supports the workspace's existing translate/scale transforms; adding arbitrary rotation/skew would require revisiting the fallback.
 
-See [V1.3 QA](docs/V1.3-QA.md) for reproduced failure paths, test coverage, and physical Safari/iPad limitations. Run `npm ci`, `npm test`, `npm run build`, and `npm run test:browser` against the dev server or a local production preview. The browser command includes five suites; `V13_WIDTH=375 node tests/selection-navigation.mjs` can isolate one selection-test width during diagnosis.
+See [V1.3 QA](docs/V1.3-QA.md) for reproduced failure paths, test coverage, and physical Safari/iPad limitations. Run `npm ci`, `npm test`, `npm run build`, and `npm run test:browser` against the dev server or a local production preview. The browser command includes six suites; `V13_WIDTH=820 node tests/selection-navigation.mjs` can isolate one selection-test width during diagnosis.
+
+## V1.4 — phone portrait canvas first
+
+Phone portrait (CSS viewport up to 600px wide) follows the approved mobile demo: compact project/progress header, Hand/Select and zoom tools, a large chart, persistent coordinate arrows/Focus Step, and a compact bottom drawer. Desktop, iPad, and phone landscape keep their V1.3 layout. The phone chrome uses self-hosted Pixelify Sans, crisp borders, hard shadows, inventory-like swatches, and a small original bead token; chart labels stay in readable monospace. The font is OFL-licensed; its license is distributed under `public/licenses/`.
+
+Tap the drawer summary or swipe its handle up to open it. Swipe the handle down or use Close to collapse. Selected-bead details, explicit per-cell completion/undo, Mark/Clear Step, statistics, bead positions, strategy/direction, Show Empty Steps, and global undo are inside. The body scrolls independently and returns to its top when reopened. Selection never opens a modal or automatically expands the drawer. The collapsed summary keeps placed/total, remaining counts, and color quantities visible; arrow navigation never marks anything complete.
+
+Phone Focus Mode folds the tool buttons and a compact zoom menu into the top HUD, freeing another toolbar row. Exit Focus, the drawer, and persistent coordinate navigation remain available; route settings remain in the expanded drawer, including in Focus.
+
+Phone rendering now sizes the actual SVG to the requested zoom and positions it directly with layout coordinates, instead of applying CSS scale to a compositor-hinted SVG layer. No raster chart or image filter is used. Native gray tap highlights are suppressed because the chart has its own vector selection cursor. This reduces a plausible Safari raster-cache path, but physical Safari blur has not been reproduced or certified fixed here. Automated checks cover 100/200/300/500% and screenshot pixels matching original palette colors after touch.
+
+Run `npm ci`, `npm test`, `npm run build`, and `npm run test:browser` against a local server. `tests/mobile-canvas.mjs` owns the updated phone portrait checks (375×667, 390×844, 402×874, 430×932); prior suites retain unchanged desktop/tablet/landscape coverage and the nine-viewport session regression. `npm run test:layout` additionally compares main/current screenshots when `PINDOU_BASELINE_URL` points to a main snapshot preview. See [V1.4 QA](docs/V1.4-QA.md) for baseline reproduction and physical Safari testing steps. No deployment workflow or saved-project format is changed.
