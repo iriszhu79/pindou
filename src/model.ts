@@ -71,7 +71,7 @@ export function createProject(): Project {
     palette,
     strategy: "row",
     reverse: false,
-    step: 0,
+    step: flower.findIndex((line) => /[^.]/.test(line)),
     updatedAt: new Date().toISOString(),
   };
 }
@@ -197,4 +197,91 @@ export function loadProjects(): Project[] {
   } catch {
     return [];
   }
+}
+
+export type CellAddress = { row: number; column: number };
+export function cellAt(p: Project, address: CellAddress | null) {
+  if (
+    !address ||
+    !Number.isInteger(address.row) ||
+    !Number.isInteger(address.column) ||
+    address.row < 0 ||
+    address.row >= p.rows ||
+    address.column < 0 ||
+    address.column >= p.columns
+  )
+    return null;
+  const cell = p.grid[address.row * p.columns + address.column];
+  return cell && !cell.isEmpty ? cell : null;
+}
+export function markCell(
+  p: Project,
+  address: CellAddress,
+  complete: boolean,
+): Project {
+  const cell = cellAt(p, address);
+  if (!cell || cell.isCompleted === complete) return p;
+  return {
+    ...p,
+    grid: p.grid.map((c) => (c === cell ? { ...c, isCompleted: complete } : c)),
+  };
+}
+/** Saved step stays a directional grid offset, compatible with V1.0–V1.2. */
+export function atCoordinate(p: Project, n: number): Project {
+  return { ...p, step: p.reverse ? stepCount(p) - 1 - n : n };
+}
+export function routeCoordinates(p: Project, showEmpty = false) {
+  const occupied = new Set(
+    p.grid
+      .filter((c) => !c.isEmpty)
+      .map((c) => (p.strategy === "row" ? c.row : c.column)),
+  );
+  const ordered = Array.from({ length: stepCount(p) }, (_, i) =>
+    p.reverse ? stepCount(p) - 1 - i : i,
+  );
+  return showEmpty ? ordered : ordered.filter((n) => occupied.has(n));
+}
+export function adjacentStep(
+  p: Project,
+  direction: -1 | 1,
+  showEmpty = false,
+): Project | null {
+  const offsets = routeCoordinates(p, showEmpty).map((n) =>
+    p.reverse ? stepCount(p) - 1 - n : n,
+  );
+  const step =
+    direction === 1
+      ? offsets.find((n) => n > p.step)
+      : [...offsets].reverse().find((n) => n < p.step);
+  return step === undefined ? null : { ...p, step };
+}
+export function startRoute(p: Project): Project {
+  const route = routeCoordinates(p);
+  const unfinished = new Set(
+    p.grid
+      .filter((c) => !c.isEmpty && !c.isCompleted)
+      .map((c) => (p.strategy === "row" ? c.row : c.column)),
+  );
+  const n = route.find((n) => unfinished.has(n)) ?? route[0];
+  return n === undefined
+    ? { ...p, step: Math.min(p.step, stepCount(p) - 1) }
+    : atCoordinate(p, n);
+}
+export function switchStrategy(
+  p: Project,
+  strategy: Project["strategy"],
+  reverse = p.reverse,
+): Project {
+  return p.strategy === strategy && p.reverse === reverse
+    ? p
+    : startRoute({ ...p, strategy, reverse });
+}
+export function stepLabel(p: Project, showEmpty = false) {
+  const route = routeCoordinates(p, showEmpty),
+    index = route.indexOf(coordinate(p));
+  const name = p.strategy === "row" ? "Row" : "Column";
+  if (!route.length) return "No beads in this pattern";
+  if (index < 0)
+    return `Grid coordinate · ${name} ${coordinate(p) + 1} (empty)`;
+  return `${showEmpty ? "Grid coordinate" : "Step"} ${index + 1} / ${route.length} · ${name} ${coordinate(p) + 1}`;
 }

@@ -18,7 +18,7 @@ Vite serves the app under `/pindou/` (port 5173 by default). Verify the page in 
 
 - Home, image upload preview, recent project, pattern overview, and interactive workspace.
 - Shared cell-level completion for rows/columns in either direction; undo (last 30 edits, current session).
-- Hand Mode for mouse/touch panning, Select Mode for bead completion, temporary Hand Mode with Space, modifier-wheel/button zoom, two-finger pinch, fit, and focus current step.
+- Hand Mode for mouse/touch panning, Select Mode for inspection with separate explicit completion, temporary Hand Mode with Space, modifier-wheel/button zoom, two-finger pinch, fit, and focus current step.
 - Computed palette statistics, coordinate labels, current-step bead positions, and deterministic color-run recommendation.
 - LocalStorage persistence, malformed-storage fallback, and visible storage-failure reporting. Data is device/browser/origin specific; uploads are temporary previews and are never parsed or persisted.
 
@@ -35,7 +35,7 @@ npm test
 npm run build
 ```
 
-Nine model/focus tests cover exact demo totals, coordinates, shared progress, clearing, direction, empty steps, recommendation, rectangular grids, palette-based statistics, and legacy storage compatibility. Chromium smoke checks exercised mobile navigation, upload preview, completion, strategy preservation, undo, reload, zoom, and horizontal overflow. Automated browser tooling was used outside the application dependencies.
+Eighteen model/hit/route/focus tests cover exact demo totals, coordinates, shared progress, clearing, direction, empty steps, recommendation, rectangular grids, palette-based statistics, and legacy storage compatibility. Chromium smoke checks exercised mobile navigation, upload preview, completion, strategy preservation, undo, reload, zoom, and horizontal overflow. Playwright is a development dependency; it is not bundled into the application.
 
 ## Cloud configuration status
 
@@ -67,7 +67,7 @@ For a local production check, run `npm run build` then `npm run preview` and ope
 ## V1.1 workspace controls
 
 - **Hand:** drag with a mouse or finger to pan. The grab cursor becomes grabbing while held. Clicking/tapping never changes completion or the active step.
-- **Select:** click/tap a bead to toggle its checkmark. Moving more than 5 screen pixels cancels selection; pinches and cancelled gestures never select a bead. Completed beads show a checkmark while retaining their original color.
+- **Select:** click/tap a bead to inspect its color, original coordinates, and completion status. Use **Mark Selected Complete** or **Undo Completion** explicitly. Selecting another bead or clearing selection never changes progress. Cross-cell release drift, drags, cancelled touches, and pinches never select a neighboring cell or complete a bead.
 - **Space:** hold while the canvas/page is focused to temporarily pan; release to restore Select. Focused buttons/selects retain their normal keyboard behavior. Switching modes leaves zoom, pan, and progress intact.
 - **Scroll:** normal wheel/two-finger trackpad scroll moves the page. Hold **Ctrl** or **Command** while scrolling over the canvas to zoom. The +/− buttons work in either mode; two-finger touchscreen pinch is also supported. Fit resets the view; Focus step recenters the active row/column.
 
@@ -87,7 +87,7 @@ In the workspace, navigation reveals an offscreen active step with minimal movem
 
 Grid dimensions, axis limits, coordinates, progress, palette counts, and viewport sizing derive from project data, including rectangular patterns. Loading a different saved project does not discard other projects. The original flower data, `pindou.projects.v1` storage key, and PR #3 input behavior remain unchanged. This does not add image parsing or a pattern-import editor.
 
-`npm run test:browser` now runs both the PR #3 input regression suite and `tests/steps.mjs`, which checks preview navigation, reverse limits, rectangular/tall grids, viewport centering with zoom retention, remaining counts/undo, the collapsible fixed mobile panel, and retention of legacy progress and multiple projects. No deployment configuration is changed.
+`npm run test:browser` includes the updated input regression suite and `tests/steps.mjs`, which checks preview navigation, reverse limits, rectangular/tall grids, viewport centering with zoom retention, remaining counts/undo, the collapsible fixed mobile panel, and retention of legacy progress and multiple projects. No deployment configuration is changed.
 
 ## V1.2 — viewport beading sessions
 
@@ -100,3 +100,19 @@ Focus mode removes optional task detail and extra project chrome while retaining
 The `pindou.projects.v1` key, IDs, cell colors, and completion schema are unchanged. No migration, clearing of storage, or cloud synchronization is introduced. Upload recognition remains preview-only, and the original chart is not transcribed. Large-grid browser tests use an explicitly synthetic 40-column × 51-row fixture, not guessed source-image data.
 
 Validation commands are `npm ci`, `npm test`, `npm run build`, and `npm run test:browser` against a running dev server or production preview. See [V1.2 QA](docs/V1.2-QA.md) for automated viewports, coverage, and real-device limitations. GitHub Pages configuration is unchanged; this feature branch must be reviewed and merged before the existing deployment workflow can publish it.
+
+## V1.3 — select, place, navigate
+
+Selection and completion are independent. A selected bead has a two-tone dashed outline and corner markers; a placed bead keeps its original color/code and adds a high-contrast boxed check. Select only changes temporary UI state. The selected-bead inspector shows row, column, color, and status, with explicit completion/undo and clear-selection controls. Hand, pinch, wheel, route changes, and Focus never silently complete beads. Keyboard users can Tab into the Select grid, use arrow keys to inspect the next nonempty cell, and Enter to select; Space remains temporary Hand Mode. Selection clears on a project change or invalid cell and is never written to LocalStorage.
+
+The workspace route bar exposes row/column strategy and direction without opening Details. Focus Mode has a compact **Focus route** menu in its top bar. A changed strategy/direction starts at the first step with unfinished beads, preserving exactly the same completed cells and overall percentage.
+
+New projects skip empty boundaries and display **Step 1 / 16 · Row 3** for the synthetic flower. Previous/Next skip empty rows/columns but retain physical chart coordinates. **Show empty steps** explicitly switches to **Grid coordinate …** navigation without deleting cells. Resuming keeps a saved nonempty position; a legacy empty position routes to the first unfinished/nonempty step. Completed projects show a finished banner. An entirely empty pattern is handled separately without fake progress or an error.
+
+Compatibility: the `pindou.projects.v1` key and project IDs are unchanged. The persisted `step` remains the original directional **grid offset**, not a nonempty-route index. Routes are derived from the grid at runtime; there is no destructive migration. Opening the studio does not rewrite saved projects. Progress is still browser/origin local, with no cross-device sync.
+
+Focus Mode now removes the secondary route bar, folds dock actions together, and narrows the wide-screen side panel, increasing useful canvas area rather than merely hiding text. It retains strategy access, tools, selection, progress, colors, navigation, and Exit Focus. Supported layout changes may adjust pan to keep the active step visible; zoom and project progress are retained.
+
+Hit detection uses the current SVG matrix after checking it against rendered fill geometry, with an axis-aligned rendered-rectangle fallback for CSS-transform inconsistencies. Pointer down/up must identify the same cell. It does not apply iPhone offsets or trust rounded native SVG hit boxes near tiny borders. The implementation supports the workspace's existing translate/scale transforms; adding arbitrary rotation/skew would require revisiting the fallback.
+
+See [V1.3 QA](docs/V1.3-QA.md) for reproduced failure paths, test coverage, and physical Safari/iPad limitations. Run `npm ci`, `npm test`, `npm run build`, and `npm run test:browser` against the dev server or a local production preview. The browser command includes five suites; `V13_WIDTH=375 node tests/selection-navigation.mjs` can isolate one selection-test width during diagnosis.

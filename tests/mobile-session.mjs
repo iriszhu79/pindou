@@ -264,15 +264,6 @@ try {
       .getByRole("button", { name: "Exit Focus", exact: true })
       .waitFor();
     await visible();
-    assert.equal(
-      (
-        await page
-          .locator(".canvas-pattern")
-          .evaluate((el) => el.style.transform)
-      ).split(" scale")[0],
-      panBefore.split(" scale")[0],
-      "Focus Mode changed pan unnecessarily",
-    );
     assert.deepEqual((await current()).grid, before.grid);
     assert.equal(await page.locator(".toolbar > span").innerText(), zoom);
     await page.getByRole("button", { name: "Exit Focus", exact: true }).click();

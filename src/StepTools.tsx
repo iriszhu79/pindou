@@ -1,46 +1,58 @@
-import { coordinate, stepCount, stepLine, type Project } from "./model";
-export function StepNavigation({
+import { memo } from "react";
+import {
+  coordinate,
+  stepLine,
+  stepLabel,
+  routeCoordinates,
+  atCoordinate,
+  adjacentStep,
+  type Project,
+} from "./model";
+function StepNavigationView({
   p,
   update,
+  showEmpty = false,
 }: {
   p: Project;
   update: (p: Project) => void;
+  showEmpty?: boolean;
 }) {
+  const route = routeCoordinates(p, showEmpty),
+    index = route.indexOf(coordinate(p));
+  const previous = adjacentStep(p, -1, showEmpty),
+    next = adjacentStep(p, 1, showEmpty);
   return (
     <div className="step-navigation">
       <div className="step-nav">
         <button
-          disabled={p.step === 0}
-          onClick={() => update({ ...p, step: p.step - 1 })}
+          disabled={!previous}
+          onClick={() => previous && update(previous)}
         >
           ← Previous
         </button>
-        <span aria-live="polite">
-          {p.strategy === "row" ? "Row" : "Column"} {coordinate(p) + 1} /{" "}
-          {stepCount(p)}
-        </span>
-        <button
-          disabled={p.step === stepCount(p) - 1}
-          onClick={() => update({ ...p, step: p.step + 1 })}
-        >
+        <span aria-live="polite">{stepLabel(p, showEmpty)}</span>
+        <button disabled={!next} onClick={() => next && update(next)}>
           Next →
         </button>
       </div>
       <label className="step-slider">
-        Step {p.step + 1} of {stepCount(p)}
+        {showEmpty ? "Grid coordinate" : "Beading step"}
         <input
           aria-label="Beading step"
           type="range"
+          disabled={!route.length || index < 0}
           min="0"
-          max={stepCount(p) - 1}
-          value={p.step}
-          onChange={(e) => update({ ...p, step: Number(e.target.value) })}
+          max={Math.max(0, route.length - 1)}
+          value={Math.max(0, index)}
+          onChange={(e) =>
+            update(atCoordinate(p, route[Number(e.target.value)]))
+          }
         />
       </label>
     </div>
   );
 }
-export function StepPositions({ p }: { p: Project }) {
+function StepPositionsView({ p }: { p: Project }) {
   return (
     <div className="step-positions">
       <p className="muted">
@@ -70,3 +82,6 @@ export function StepPositions({ p }: { p: Project }) {
     </div>
   );
 }
+
+export const StepNavigation = memo(StepNavigationView);
+export const StepPositions = memo(StepPositionsView);

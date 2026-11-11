@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+} from "react";
 import { createRoot } from "react-dom/client";
 import {
   createProject,
@@ -8,7 +14,14 @@ import {
   markStep,
   coordinate,
   recommendation,
-  stepCount,
+  cellAt,
+  markCell,
+  switchStrategy,
+  startRoute,
+  routeCoordinates,
+  adjacentStep,
+  stepLabel,
+  type CellAddress,
   type Project,
 } from "./model";
 import "./style.css";
@@ -25,7 +38,7 @@ function Strategy({ p, update }: { p: Project; update: (p: Project) => void }) {
           <button
             key={s}
             className={p.strategy === s ? "selected" : ""}
-            onClick={() => update({ ...p, strategy: s, step: 0 })}
+            onClick={() => update(switchStrategy(p, s))}
           >
             {s === "row" ? "☷ Row-by-Row" : "▥ Column-by-Column"}
           </button>
@@ -36,7 +49,7 @@ function Strategy({ p, update }: { p: Project; update: (p: Project) => void }) {
         <select
           value={p.reverse ? "reverse" : "forward"}
           onChange={(e) =>
-            update({ ...p, reverse: e.target.value === "reverse", step: 0 })
+            update(switchStrategy(p, p.strategy, e.target.value === "reverse"))
           }
         >
           <option value="forward">
@@ -64,14 +77,43 @@ function App() {
   const [undo, setUndo] = useState<Project[]>([]);
   const [panelExpanded, setPanelExpanded] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [selected, setSelected] = useState<CellAddress | null>(null);
+  const [showEmpty, setShowEmpty] = useState(false);
+  const chooseCell = useCallback(
+    (address: CellAddress | null) => setSelected(address),
+    [],
+  );
   const [stageSize, setStageSize] = useState({ width: 1, height: 1 });
   const file = useRef<HTMLInputElement>(null);
-  const counts = stats(p.grid, p.palette),
-    total = counts.reduce((a, c) => a + c.count, 0),
-    done = p.grid.filter((c) => !c.isEmpty && c.isCompleted).length,
-    percent = total ? Math.round((done / total) * 100) : 0,
-    cells = stepCells(p),
-    rec = recommendation(p);
+  const counts = useMemo(() => stats(p.grid, p.palette), [p.grid, p.palette]);
+  const total = counts.reduce((a, c) => a + c.count, 0),
+    done = counts.reduce((a, c) => a + c.done, 0);
+  const percent = total ? Math.round((done / total) * 100) : 0;
+  const cells = useMemo(
+    () => stepCells(p),
+    [p.grid, p.step, p.strategy, p.reverse, p.rows, p.columns],
+  );
+  const rec = useMemo(() => recommendation(p), [p.grid, p.rows, p.columns]);
+  const selectedCell = cellAt(p, selected);
+  const previous = useMemo(
+    () => adjacentStep(p, -1, showEmpty),
+    [p, showEmpty],
+  );
+  const next = useMemo(() => adjacentStep(p, 1, showEmpty), [p, showEmpty]);
+  useEffect(() => setSelected(null), [p.id]);
+  useEffect(() => {
+    if (selected && !cellAt(p, selected)) setSelected(null);
+  }, [p.grid, selected]);
+  const updateRoute = (project: Project) => {
+    setShowEmpty(false);
+    setP(project);
+  };
+  const resume = (project: Project) => {
+    // Preserve a valid meaningful saved position; legacy empty positions are not
+    // beading tasks. Route to remaining work without migrating the stored format.
+    setShowEmpty(false);
+    setP(stepCells(project).length ? project : startRoute(project));
+  };
   useEffect(() => {
     if (page === "home") return;
     const next = [
@@ -100,7 +142,7 @@ function App() {
     setP(n);
   };
   const open = () => {
-    setP(saved[0] ?? createProject());
+    resume(saved[0] ?? createProject());
     setPage("overview");
     setUpload(null);
   };
@@ -121,26 +163,8 @@ function App() {
     );
     setPan({ x: transform.m41 + delta.x, y: transform.m42 + delta.y });
   };
-  const toggle = ({ x, y }: { x: number; y: number }) => {
-    const svg = stage.current?.querySelector("svg");
-    const matrix = svg?.getScreenCTM();
-    if (!matrix) return;
-    const pt = new DOMPoint(x, y).matrixTransform(matrix.inverse());
-    const row = Math.floor(pt.y / CELL),
-      column = Math.floor(pt.x / CELL);
-    if (!p.grid.some((c) => c.row === row && c.column === column && !c.isEmpty))
-      return;
-    change({
-      ...p,
-      grid: p.grid.map((c) =>
-        c.row === row && c.column === column
-          ? { ...c, isCompleted: !c.isCompleted }
-          : c,
-      ),
-    });
-  };
   const { stage, scale, pan, setPan, zoom, fit, hand, dragging, handlers } =
-    useCanvasInteraction(select, toggle);
+    useCanvasInteraction(select, chooseCell);
 
   useEffect(() => {
     if (page !== "workspace") return;
@@ -286,7 +310,7 @@ function App() {
                     className="project"
                     key={v.id}
                     onClick={() => {
-                      setP(v);
+                      resume(v);
                       setPage("workspace");
                       fit();
                     }}
@@ -367,9 +391,17 @@ function App() {
             <div className="overview">
               <section className="card preview">
                 <span className="tag">SYNTHETIC DEMO</span>
-                <Grid p={p} active onStep={(step) => setP({ ...p, step })} />
+                <Grid
+                  p={p}
+                  active
+                  onStep={(step) => {
+                    const next = { ...p, step };
+                    if (!stepCells(next).length) setShowEmpty(true);
+                    setP(next);
+                  }}
+                />
                 <p>{p.name} · Tap a row or column to preview</p>
-                <StepNavigation p={p} update={setP} />
+                <StepNavigation p={p} update={setP} showEmpty={showEmpty} />
                 <details>
                   <summary>About this sample & original reference</summary>
                   <p>
@@ -425,7 +457,7 @@ function App() {
                 </section>
                 <section className="card">
                   <h2>Find your rhythm</h2>
-                  <Strategy p={p} update={setP} />
+                  <Strategy p={p} update={updateRoute} />
                   <div className="recommend">
                     <b>
                       ✦ A little suggestion <small>EXPERIMENTAL</small>
@@ -441,7 +473,9 @@ function App() {
                     </p>
                     <button
                       onClick={() =>
-                        setP({ ...p, strategy: rec.strategy, step: 0 })
+                        updateRoute(
+                          startRoute({ ...p, strategy: rec.strategy }),
+                        )
                       }
                     >
                       Use suggestion
@@ -477,6 +511,26 @@ function App() {
                   {p.name} <span className="tag">DEMO</span>
                 </h2>
               </div>
+              <select
+                className="focus-route"
+                aria-label="Focus route"
+                value={`${p.strategy}-${p.reverse ? "reverse" : "forward"}`}
+                onChange={(e) => {
+                  const [axis, direction] = e.target.value.split("-");
+                  updateRoute(
+                    switchStrategy(
+                      p,
+                      axis as Project["strategy"],
+                      direction === "reverse",
+                    ),
+                  );
+                }}
+              >
+                <option value="row-forward">Rows ↓</option>
+                <option value="row-reverse">Rows ↑</option>
+                <option value="column-forward">Columns →</option>
+                <option value="column-reverse">Columns ←</option>
+              </select>
               <button
                 className="focus-mode-toggle"
                 aria-pressed={focusMode}
@@ -494,6 +548,66 @@ function App() {
                   {error ? "Unsaved" : "Saved on this device"}
                 </small>
               </div>
+            </div>
+            <div
+              className="workspace-route"
+              role="group"
+              aria-label="Beading route settings"
+            >
+              <label>
+                Strategy
+                <select
+                  aria-label="Beading strategy"
+                  value={p.strategy}
+                  onChange={(e) =>
+                    updateRoute(
+                      switchStrategy(p, e.target.value as Project["strategy"]),
+                    )
+                  }
+                >
+                  <option value="row">Row-by-Row</option>
+                  <option value="column">Column-by-Column</option>
+                </select>
+              </label>
+              <label>
+                Direction
+                <select
+                  aria-label="Workspace starting direction"
+                  value={p.reverse ? "reverse" : "forward"}
+                  onChange={(e) =>
+                    updateRoute(
+                      switchStrategy(
+                        p,
+                        p.strategy,
+                        e.target.value === "reverse",
+                      ),
+                    )
+                  }
+                >
+                  <option value="forward">
+                    {p.strategy === "row"
+                      ? "Top to bottom ↓"
+                      : "Left to right →"}
+                  </option>
+                  <option value="reverse">
+                    {p.strategy === "row"
+                      ? "Bottom to top ↑"
+                      : "Right to left ←"}
+                  </option>
+                </select>
+              </label>
+              <label className="show-empty">
+                <input
+                  type="checkbox"
+                  checked={showEmpty}
+                  onChange={(e) => {
+                    setShowEmpty(e.target.checked);
+                    if (!e.target.checked && !stepCells(p).length)
+                      setP(startRoute(p));
+                  }}
+                />{" "}
+                Show empty steps
+              </label>
             </div>
             <div className="workspace">
               <section className="canvas-card">
@@ -525,6 +639,57 @@ function App() {
                     <button onClick={fit}>Fit</button>
                   </div>
                 </div>
+                {(select || selectedCell) && (
+                  <section
+                    className="selection-context"
+                    aria-label="Selected bead"
+                  >
+                    {selectedCell ? (
+                      <>
+                        <div aria-live="polite">
+                          <strong>
+                            Row {selectedCell.row + 1} · Column{" "}
+                            {selectedCell.column + 1}
+                          </strong>
+                          <span>
+                            Color: {selectedCell.colorCode} ·{" "}
+                            {selectedCell.isCompleted
+                              ? "Completed"
+                              : "Not completed"}
+                          </span>
+                        </div>
+                        <button
+                          className="selected-action"
+                          onClick={() =>
+                            change(
+                              markCell(
+                                p,
+                                selectedCell,
+                                !selectedCell.isCompleted,
+                              ),
+                            )
+                          }
+                        >
+                          {selectedCell.isCompleted
+                            ? "Undo Completion"
+                            : "Mark Selected Complete"}
+                        </button>
+                        <button
+                          className="clear-selection"
+                          aria-label="Clear selection"
+                          onClick={() => setSelected(null)}
+                        >
+                          ×
+                        </button>
+                      </>
+                    ) : (
+                      <p>
+                        Tap a bead to inspect its color and coordinates.
+                        Completion is a separate action.
+                      </p>
+                    )}
+                  </section>
+                )}
                 <div
                   className={`stage ${hand ? "hand-mode" : "select-mode"}${dragging && hand ? " is-dragging" : ""}`}
                   ref={stage}
@@ -542,14 +707,19 @@ function App() {
                       transform: `translate(${pan.x}px,${pan.y}px) scale(${scale})`,
                     }}
                   >
-                    <Grid p={p} active />
+                    <Grid
+                      p={p}
+                      active
+                      selected={selectedCell ? selected : null}
+                      onSelect={!hand ? chooseCell : undefined}
+                    />
                   </div>
                 </div>
                 <div className="canvas-caption">
                   <span id="canvas-help">
                     {hand
                       ? "Drag to pan · Ctrl/⌘ + scroll to zoom"
-                      : "Tap a bead to toggle · Hold Space to pan"}
+                      : "Tap to select, then complete · Space to pan"}
                   </span>
                   <div
                     className="canvas-step-nav"
@@ -559,8 +729,8 @@ function App() {
                     <button
                       aria-label="Previous canvas step"
                       title="Previous step (does not mark complete)"
-                      disabled={p.step === 0}
-                      onClick={() => setP({ ...p, step: p.step - 1 })}
+                      disabled={!previous}
+                      onClick={() => previous && setP(previous)}
                     >
                       {p.strategy === "row"
                         ? p.reverse
@@ -577,8 +747,8 @@ function App() {
                     <button
                       aria-label="Next canvas step"
                       title="Next step (does not mark complete)"
-                      disabled={p.step === stepCount(p) - 1}
-                      onClick={() => setP({ ...p, step: p.step + 1 })}
+                      disabled={!next}
+                      onClick={() => next && setP(next)}
                     >
                       {p.strategy === "row"
                         ? p.reverse
@@ -596,11 +766,14 @@ function App() {
                 className={`card task-panel ${panelExpanded ? "expanded" : "collapsed"}`}
                 aria-label="Beading task"
               >
+                {total > 0 && done === total && (
+                  <div className="finished-banner" role="status">
+                    ✦ Project complete · all {total} beads placed
+                  </div>
+                )}
                 <div className="task-heading">
-                  <h2 className="step-title">
-                    {p.strategy === "row" ? "Row" : "Column"}{" "}
-                    {coordinate(p) + 1} <small>/ {stepCount(p)}</small>
-                  </h2>
+                  <h2 className="step-title">{stepLabel(p, showEmpty)}</h2>
+
                   <button
                     className="panel-toggle"
                     aria-expanded={panelExpanded}
@@ -642,7 +815,7 @@ function App() {
                     </span>
                   )}
                 </div>
-                <StepNavigation p={p} update={setP} />
+                <StepNavigation p={p} update={setP} showEmpty={showEmpty} />
                 <button
                   className={`primary full complete-action${cells.length && cells.every((c) => c.isCompleted) ? " step-completed" : ""}`}
                   disabled={!cells.length}
@@ -692,7 +865,7 @@ function App() {
                     ↶ Undo last change
                   </button>
                   <hr />
-                  <Strategy p={p} update={setP} />
+                  <Strategy p={p} update={updateRoute} />
                   <p className="muted">
                     ▣ Switching strategies preserves your completed beads.
                   </p>
