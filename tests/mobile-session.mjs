@@ -54,6 +54,7 @@ const large = {
 const allErrors = [];
 try {
   for (const [width, height] of viewports) {
+    const phone = width <= 600 && height > width;
     const context = await browser.newContext({
       viewport: { width, height },
       hasTouch: true,
@@ -76,6 +77,22 @@ try {
       [project, backup, large],
     );
     await page.getByRole("button", { name: /Little bloom.*Continue/ }).click();
+    const expandDrawer = async () => {
+      if (
+        phone &&
+        (await page.locator(".drawer-toggle").getAttribute("aria-expanded")) ===
+          "false"
+      )
+        await page.locator(".drawer-toggle").click();
+    };
+    const collapseDrawer = async () => {
+      if (
+        phone &&
+        (await page.locator(".drawer-toggle").getAttribute("aria-expanded")) ===
+          "true"
+      )
+        await page.locator(".drawer-toggle").click();
+    };
     const current = () =>
       page.evaluate(
         () => JSON.parse(localStorage.getItem("pindou.projects.v1"))[0],
@@ -84,15 +101,21 @@ try {
       const result = await page.evaluate(() => {
         const rect = (s) => document.querySelector(s).getBoundingClientRect();
         const stage = rect(".stage"),
-          panel = rect(".task-panel");
-        const selectors = [
-          ".step-title",
-          ".remaining-summary",
-          ".color-chips",
-          ".task-panel .step-nav button:last-child",
-          ".complete-action",
-          ".canvas-step-nav",
-        ];
+          panel = rect(
+            document.querySelector(".mobile-drawer")
+              ? ".mobile-drawer"
+              : ".task-panel",
+          );
+        const selectors = document.querySelector(".mobile-drawer")
+          ? [".drawer-toggle", ".drawer-summary", ".canvas-step-nav"]
+          : [
+              ".step-title",
+              ".remaining-summary",
+              ".color-chips",
+              ".task-panel .step-nav button:last-child",
+              ".complete-action",
+              ".canvas-step-nav",
+            ];
         return {
           height: innerHeight,
           width: innerWidth,
@@ -180,7 +203,10 @@ try {
           `${cells.length} total.*${cells.filter((c) => c.isCompleted).length} completed.*${cells.filter((c) => !c.isCompleted).length} remaining`,
         ),
       );
-      assert.equal(await page.locator(".color-chip").count(), counts.length);
+      assert.equal(
+        await page.locator(phone ? ".drawer-chip" : ".color-chip").count(),
+        counts.length,
+      );
       for (const c of counts)
         await page
           .getByLabel(
@@ -190,6 +216,7 @@ try {
           .waitFor();
       await visible();
       if (cells.length) {
+        await expandDrawer();
         await page
           .getByRole("button", { name: "Mark step complete", exact: false })
           .click();
@@ -198,8 +225,9 @@ try {
           0,
         );
       }
+      await collapseDrawer();
       const completed = (await current()).grid;
-      if (n % 2)
+      if (phone || n % 2)
         await page
           .getByRole("button", { name: "Next canvas step", exact: true })
           .click();
@@ -225,14 +253,28 @@ try {
     const touchState = await current();
     const originalView = await page
       .locator(".canvas-pattern")
-      .evaluate((el) => el.style.transform);
+      .evaluate((el) =>
+        JSON.stringify({
+          transform: el.style.transform,
+          x: el.dataset.panX,
+          y: el.dataset.panY,
+          width: el.style.width,
+        }),
+      );
     await touch("touchStart", [{ ...point, id: 1 }]);
     await touch("touchMove", [{ x: point.x + 20, y: point.y + 10, id: 1 }]);
     await touch("touchEnd", []);
     assert.notEqual(
       await page
         .locator(".canvas-pattern")
-        .evaluate((el) => el.style.transform),
+        .evaluate((el) =>
+          JSON.stringify({
+            transform: el.style.transform,
+            x: el.dataset.panX,
+            y: el.dataset.panY,
+            width: el.style.width,
+          }),
+        ),
       originalView,
     );
     const pinchZoom = await page.locator(".toolbar > span").innerText();
@@ -258,7 +300,14 @@ try {
     const zoom = await page.locator(".toolbar > span").innerText();
     const panBefore = await page
       .locator(".canvas-pattern")
-      .evaluate((el) => el.style.transform);
+      .evaluate((el) =>
+        JSON.stringify({
+          transform: el.style.transform,
+          x: el.dataset.panX,
+          y: el.dataset.panY,
+          width: el.style.width,
+        }),
+      );
     await page.getByRole("button", { name: "Focus mode", exact: true }).click();
     await page
       .getByRole("button", { name: "Exit Focus", exact: true })
@@ -308,6 +357,7 @@ try {
       "Unrelated saved project changed",
     );
     await page.emulateMedia({ reducedMotion: "reduce" });
+    await expandDrawer();
     await page
       .getByRole("button", { name: "Mark step complete", exact: false })
       .click();
@@ -323,6 +373,7 @@ try {
       "none",
       "Reduced motion ignored",
     );
+    await collapseDrawer();
     // Back restores the normal studio page rather than retaining a body scroll lock.
     await page
       .getByRole("button", { name: "Pattern overview", exact: true })

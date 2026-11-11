@@ -9,14 +9,16 @@ const browser = await chromium.launch({
 });
 const url = process.env.PINDOU_TEST_URL || "http://127.0.0.1:5173/pindou/";
 const viewports = [
-  [390, 844],
-  [375, 667],
   [844, 390],
   [820, 1180],
   [1180, 820],
   [1440, 900],
 ].filter(
   ([w]) => !process.env.V13_WIDTH || w === Number(process.env.V13_WIDTH),
+);
+assert.ok(
+  viewports.length,
+  "Use tests/mobile-canvas.mjs for V1.4 phone portrait; no matching V1.3 regression viewport.",
 );
 let debugPage;
 const errors = [];
@@ -356,12 +358,30 @@ try {
     assert.deepEqual(await completed(), five);
     await page.setViewportSize({ width: height, height: width });
     await page.waitForTimeout(100);
-    await page.getByText("Row 3 · Column 12", { exact: true }).waitFor();
+    if (await page.locator(".mobile-drawer").count())
+      assert.equal(
+        (
+          await page
+            .getByText("Row 3 · Column 12", { exact: true })
+            .textContent()
+        ).trim(),
+        "Row 3 · Column 12",
+      );
+    else await page.getByText("Row 3 · Column 12", { exact: true }).waitFor();
     assert.deepEqual(await completed(), five);
     await ensureVisible(2, 8);
     b = await rect(2, 8);
     await tap({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
-    await page.getByText("Row 3 · Column 9", { exact: true }).waitFor();
+    if (await page.locator(".mobile-drawer").count())
+      assert.equal(
+        (
+          await page
+            .getByText("Row 3 · Column 9", { exact: true })
+            .textContent()
+        ).trim(),
+        "Row 3 · Column 9",
+      );
+    else await page.getByText("Row 3 · Column 9", { exact: true }).waitFor();
     const beforeReload = await current();
     await page.reload();
     await page.getByRole("button", { name: /beads placed · Continue/ }).click();

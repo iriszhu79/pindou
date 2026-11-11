@@ -8,9 +8,11 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --experimental-strip-types --test src/*.test.ts",
-    "test:browser": "node tests/workspace.mjs && node tests/steps.mjs && node tests/mobile-session.mjs && node tests/selection-navigation.mjs && node tests/routes.mjs"
+    "test:browser": "node tests/workspace.mjs && node tests/steps.mjs && node tests/mobile-session.mjs && node tests/selection-navigation.mjs && node tests/routes.mjs && node tests/mobile-canvas.mjs",
+    "test:layout": "node tests/layout-preservation.mjs"
   },
   "dependencies": {
+    "@fontsource/pixelify-sans": "5.2.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

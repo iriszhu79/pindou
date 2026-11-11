@@ -31,7 +31,7 @@ const p = {
 const other = { ...p, id: "other", name: "Other project" };
 async function open(projects) {
   const context = await browser.newContext({
-    viewport: { width: 390, height: 844 },
+    viewport: { width: 820, height: 1180 },
     hasTouch: true,
   });
   await context.addInitScript(
