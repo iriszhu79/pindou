@@ -1,3 +1,58 @@
+# Pindou V1.5 · isolated design preview
+
+**Experimental branch only: `feat/v1.5-pixel-game-redesign`. Not approved for production.**
+The original repository’s `main`, `/pindou/` site, Vite configuration, and production deployment workflow are unchanged. Do not merge this branch to publish the experiment.
+
+- Preview repository: https://github.com/iriszhu79/pindou-preview
+- Intended preview URL: https://iriszhu79.github.io/pindou-preview/
+- Deployment status: check the preview repository’s **Actions → Deploy V1.5 isolated preview**. A passing local build does not mean Pages is live.
+- V1.4 comparison: https://iriszhu79.github.io/pindou/
+
+## Run and review V1.5 locally
+
+```sh
+npm ci
+npm test
+npm run build:preview
+npm run serve:preview
+# http://localhost:4301/pindou-preview/
+# or npm run dev:preview (port 4300)
+```
+
+`vite.preview.config.ts` uses `/pindou-preview/` and emits `dist-preview/`. Asset links use Vite’s base URL; fonts are self-hosted. `npm run build` remains available to verify the original build configuration, but **must not be used to publish this preview**.
+
+## Preview data isolation
+
+This experimental source reads and writes only `pindou.preview.v15.projects.v1`. It never reads, migrates, edits, or deletes `pindou.projects.v1`. GitHub project Pages share an origin, so a separate path alone is insufficient; the separate key is mandatory. Existing production projects intentionally do not appear in preview save slots. Preview progress remains local to each browser/device; it does not synchronize. No data migration is performed.
+
+## Preview publishing (separate repository only)
+
+1. In **iriszhu79/pindou-preview → Settings → Pages**, select **GitHub Actions** as the source. An administrator may need to do this. No tokens belong in chat or committed files.
+2. The preview checkout contains the V1.5 source and `.github/workflows/deploy-preview.yml`, copied from [the preview-only workflow template](docs/preview-deploy.yml). The original production workflow is excluded from that checkout. The template is documentation in the original repository and does not run there.
+3. Push reviewed preview updates to the **preview repository’s** `main`. Its workflow uses Node 24, `npm ci`, `npm test`, `npm run build:preview`, the official Pages artifact action, and the official Pages deployment action. Only `dist-preview/` is published; no Jekyll/source publishing.
+4. Check both build and deploy jobs at https://github.com/iriszhu79/pindou-preview/actions . After success, open the expected preview URL on each device. Never infer production approval from a preview deployment.
+
+**Troubleshooting:** a configure-pages “Not Found” usually means Pages source is not enabled. Enable it in the preview repository settings and rerun the failed workflow. Check `contents: read`, `pages: write`, `id-token: write`, repository Actions policies, and any `github-pages` environment approvals if deployment is denied. A blank page or 404 asset indicates the wrong build/base path: use `build:preview` and upload `dist-preview/`. A blocked API request from this cloud environment is a network-policy limitation, not proof of a missing GitHub repository permission.
+
+## Design and controls
+
+Shared scoped tokens, pixel typography, borders, resource chips and panels unite a red game-start screen, a cream preparation board, and an orange beading console. The sky/workshop/bead-keeper illustration is original SVG artwork, not a mockup background. All charts, statistics and controls are real components. Pixelify Sans is bundled under its [SIL Open Font License](public/licenses/Pixelify-Sans-OFL.txt).
+
+START opens the sample overview or offers real preview saves to continue. UPLOAD remains image-preview-only. Overview inventory quantities and recommendations are computed from actual structured data.
+
+Existing Previous/Next, completion, undo, Hand/Select, zoom, Focus Mode, route settings and drawer remain. D-pad controls in task details navigate the applicable row/column axis; other directions are disabled. **A** explicitly places the selected bead in Select Mode, otherwise the current step; its visible label and accessible name describe the action. Already-completed targets disable A. **B** undoes the most recent completion edit in this session; it never resets the project. Session undo history is not retained on refresh, matching existing behavior.
+
+## Review artifacts and QA
+
+- [Mobile and desktop screenshots](docs/previews/v15/README.md)
+- [V1.5 QA notes](docs/QA-v1.5.md)
+- Browser regression: start `serve:preview`, then `npm run test:browser` and `npm run test:preview` (set `CHROMIUM_PATH=/usr/bin/chromium` when using system Chromium).
+- Historical V1.4 pixel-equality layout tests are not an acceptance target for an intentional all-page visual redesign.
+
+---
+
+The following historical Phase 1–V1.4 notes describe the production baseline, including its deployment. They are retained for context; use the preview instructions above for this branch.
+
 # Pindou · Phase 1
 
 A mobile-first React + TypeScript + Vite beading studio. No backend, login, AI service, or credentials required. Node 22+ is required for the TypeScript model tests; the cloud environment uses Node 24.

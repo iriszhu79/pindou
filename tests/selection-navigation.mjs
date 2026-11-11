@@ -7,7 +7,7 @@ const browser = await chromium.launch({
     ? { executablePath: process.env.CHROMIUM_PATH }
     : {}),
 });
-const url = process.env.PINDOU_TEST_URL || "http://127.0.0.1:5173/pindou/";
+const url = process.env.PINDOU_TEST_URL || "http://127.0.0.1:4301/pindou-preview/";
 const viewports = [
   [844, 390],
   [820, 1180],
@@ -32,19 +32,19 @@ try {
     debugPage = page;
     page.on("pageerror", (e) => errors.push(e.message));
     await page.goto(url);
-    await page.getByRole("button", { name: "Try Sample Pattern ↗" }).click();
+    await page.getByRole("button", { name: "START" }).click();
     assert.equal(
       await page.locator(".preview [data-active-step]").getAttribute("y"),
       "48",
     );
-    await page.getByRole("button", { name: "Start Beading →" }).click();
+    await page.getByRole("button", { name: "START BEADING →" }).click();
     assert.equal(
       await page.locator(".step-title").innerText(),
       "Step 1 / 16 · Row 3",
     );
     const current = () =>
       page.evaluate(
-        () => JSON.parse(localStorage.getItem("pindou.projects.v1"))[0],
+        () => JSON.parse(localStorage.getItem("pindou.preview.v15.projects.v1"))[0],
       );
     const completed = async () =>
       (await current()).grid

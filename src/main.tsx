@@ -27,6 +27,10 @@ import {
 import "./style.css";
 import "./workspace.css";
 import "./mobile-workspace.css";
+import "./preview-design.css";
+import { PROJECT_STORAGE_KEY } from "./storage";
+import { GameStart, PixelWorld, GamePanel, ConsolePad } from "./previewDesign";
+import { confirmConsoleCompletion, consoleActionLabel } from "./consoleActions";
 import { MobileDrawer } from "./MobileDrawer";
 import { usePhonePortrait } from "./usePhonePortrait";
 import { stepPanDelta } from "./viewport";
@@ -36,14 +40,22 @@ import { useCanvasInteraction } from "./useCanvasInteraction";
 function Strategy({ p, update }: { p: Project; update: (p: Project) => void }) {
   return (
     <div className="strategy">
-      <div className="segmented">
+      <div className="segmented strategy-cards">
         {(["row", "column"] as const).map((s) => (
           <button
             key={s}
             className={p.strategy === s ? "selected" : ""}
             onClick={() => update(switchStrategy(p, s))}
           >
-            {s === "row" ? "☷ Row-by-Row" : "▥ Column-by-Column"}
+            <span className={`strategy-mini ${s}`} aria-hidden="true" />
+            <span>
+              {s === "row" ? "☷ Row-by-Row" : "▥ Column-by-Column"}
+              <small>
+                {s === "row"
+                  ? "Bead across, one row at a time."
+                  : "Bead down, one column at a time."}
+              </small>
+            </span>
           </button>
         ))}
       </div>
@@ -67,6 +79,11 @@ function Strategy({ p, update }: { p: Project; update: (p: Project) => void }) {
   );
 }
 function App() {
+  const [chooseProject, setChooseProject] = useState(false);
+  useEffect(() => {
+    document.body.classList.add("v15-preview");
+    return () => document.body.classList.remove("v15-preview");
+  }, []);
   const phone = usePhonePortrait();
   const [saved, setSaved] = useState(loadProjects);
   const [p, setP] = useState<Project>(
@@ -126,7 +143,7 @@ function App() {
     ];
     setSaved(next);
     try {
-      localStorage.setItem("pindou.projects.v1", JSON.stringify(next));
+      localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(next));
       setError("");
     } catch {
       setError(
@@ -141,7 +158,12 @@ function App() {
     [upload],
   );
   useEffect(() => setUndo([]), [p.id]);
+  useEffect(() => {
+    if (upload)
+      document.querySelector(".upload")?.scrollIntoView({ block: "start" });
+  }, [upload]);
   const change = (n: Project) => {
+    if (n === p) return;
     setUndo((v) => [...v.slice(-29), p]);
     setP(n);
   };
@@ -277,16 +299,66 @@ function App() {
     setP(undo[undo.length - 1]);
     setUndo((v) => v.slice(0, -1));
   };
+  const actionLabel = consoleActionLabel(p, select, selected);
+  const canConfirm =
+    select && selectedCell
+      ? !selectedCell.isCompleted
+      : cells.some((cell) => !cell.isCompleted);
+  const actionButtons = (
+    <div
+      className="console-ab"
+      role="group"
+      aria-label="Console completion controls"
+    >
+      <button
+        className="console-a"
+        title={`A: ${actionLabel}`}
+        aria-label={`A: ${actionLabel}`}
+        disabled={!canConfirm}
+        onClick={() => change(confirmConsoleCompletion(p, select, selected))}
+      >
+        <b>A</b>
+        <small>{select && selectedCell ? "PLACE BEAD" : "PLACE STEP"}</small>
+      </button>
+      <button
+        className="console-b"
+        aria-label="B: Undo last completion"
+        title="B: Undo last completion"
+        disabled={!undo.length}
+        onClick={undoLast}
+      >
+        <b>B</b>
+        <small>UNDO</small>
+      </button>
+    </div>
+  );
+  const extraControls = (
+    <GamePanel title="Console controls">
+      <ConsolePad p={p} showEmpty={showEmpty} onNavigate={setP} />
+      <p className="console-explanation">
+        A: {actionLabel}. B: undo the last completion change.
+      </p>
+      {actionButtons}
+    </GamePanel>
+  );
   return (
     <>
       <header>
         <button className="logo" onClick={() => setPage("home")}>
-          <span>✿</span> pindou<sup>✦</sup>
+          <span>✿</span> PINDOU<sup>✦</sup>
         </button>
         <nav>
           <button onClick={() => setPage("home")}>My studio</button>
+          <a
+            className="production-link"
+            href="https://iriszhu79.github.io/pindou/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Compare V1.4 ↗
+          </a>
           <small>
-            PHASE 01 <i /> LOCAL STUDIO
+            V1.5 PREVIEW <i /> ISOLATED SAVES
           </small>
         </nav>
       </header>
@@ -297,6 +369,12 @@ function App() {
             : undefined
         }
       >
+        {page === "workspace" && (
+          <div className="preview-workspace-note" role="note">
+            <b>V1.5 PREVIEW</b>
+            <span>Separate saves · V1.4 untouched</span>
+          </div>
+        )}
         {error && (
           <p className="notice" role="alert">
             {error}
@@ -304,49 +382,21 @@ function App() {
         )}
         {page === "home" && (
           <>
-            <section className="hero">
-              <div>
-                <div className="eyebrow">
-                  ▪ SMALL BEADS. BIG POSSIBILITIES.
-                </div>
-                <h1>
-                  A little focus.
-                  <br />A little color.
-                  <br />
-                  <em>A little bead of joy.</em>
-                </h1>
-                <p>
-                  Your cozy corner for pixel-perfect creations. Turn a pattern
-                  into small, satisfying steps — one bead at a time.
-                </p>
-                <div className="actions">
-                  <button
-                    className="primary"
-                    onClick={() => file.current?.click()}
-                  >
-                    ↑ Upload Pattern
-                  </button>
-                  <button onClick={open}>Try Sample Pattern ↗</button>
-                </div>
-                <small>
-                  No sign-up. No rush. Just you and your next creation.
-                </small>
-              </div>
-              <div className="hero-art">
-                <small>MADE OF LITTLE MOMENTS</small>
-                <span className="spark">✦</span>
-                <div className="art-board">
-                  <Grid p={createProject()} />
-                </div>
-                <b>✿ A bloom, bead by bead.</b>
-                <span className="art-caption">+ a little everyday magic</span>
-              </div>
-            </section>
-            <div className="features">
-              <span>▦ One step at a time</span>
-              <span>✥ Make room to explore</span>
-              <span>▣ Pick up where you left off</span>
-            </div>
+            <GameStart
+              projects={saved}
+              choosing={chooseProject}
+              onStart={() => {
+                if (saved.length) setChooseProject(true);
+                else open();
+              }}
+              onUpload={() => file.current?.click()}
+              onSample={open}
+              onProject={(project) => {
+                resume(project);
+                setPage("workspace");
+                fit();
+              }}
+            />
             {upload && (
               <section className="card upload">
                 <div>
@@ -374,13 +424,13 @@ function App() {
             <section className="recent">
               <div className="section-title">
                 <div>
-                  <div className="eyebrow">YOUR CREATIVE CORNER</div>
+                  <div className="eyebrow">YOUR SAVE SLOTS</div>
                   <h2>
-                    Recent projects{" "}
+                    Saved adventures{" "}
                     <sup>{String(saved.length).padStart(2, "0")}</sup>
                   </h2>
                 </div>
-                <small>Saved on this device</small>
+                <small>Preview saves on this device</small>
               </div>
               {saved.length ? (
                 saved.map((v) => (
@@ -425,50 +475,26 @@ function App() {
                 </div>
               )}
             </section>
-            <section className="how">
-              <div className="eyebrow">LESS COUNTING. MORE CREATING.</div>
-              <h2>Find your flow, one bead at a time.</h2>
-              <div>
-                {[
-                  [
-                    "01",
-                    "Bring a little inspiration",
-                    "Preview your own image or explore our interactive demo.",
-                  ],
-                  [
-                    "02",
-                    "Choose your own rhythm",
-                    "Work across rows or down columns. You set the pace.",
-                  ],
-                  [
-                    "03",
-                    "Watch it come together",
-                    "Mark your progress and come back whenever you like.",
-                  ],
-                ].map(([n, t, d]) => (
-                  <article key={n}>
-                    <b>{n}</b>
-                    <h3>{t}</h3>
-                    <p>{d}</p>
-                  </article>
-                ))}
-              </div>
-            </section>
           </>
         )}
         {page === "overview" && (
           <>
+            <div className="overview-world">
+              <PixelWorld compact /><div className="world-brand" aria-hidden="true">PINDOU<small>PIXEL BEADING STUDIO</small></div>
+            </div>
             <button className="back" onClick={() => setPage("home")}>
               ← Back to studio
             </button>
             <div className="page-heading">
               <div className="eyebrow">A SMALL PROJECT, A HAPPY MOMENT</div>
-              <h1>Find your next little moment.</h1>
-              <p>Get to know your pattern, then find your rhythm.</p>
+              <h1>{p.name}</h1>
+              <p>Pick your supplies. Choose a route. Make something little.</p>
             </div>
             <div className="overview">
               <section className="card preview">
-                <span className="tag">SYNTHETIC DEMO</span>
+                <div className="board-label">
+                  PATTERN BOARD <span className="tag">SYNTHETIC DEMO</span>
+                </div>
                 <Grid
                   p={p}
                   active
@@ -500,9 +526,7 @@ function App() {
               </section>
               <div className="info">
                 <section className="card">
-                  <h2>
-                    {p.name} <em>✿</em>
-                  </h2>
+                  <h2 className="panel-heading">✦ Project info ✦</h2>
                   <div className="metrics">
                     <div>
                       <b>
@@ -519,7 +543,7 @@ function App() {
                       <small>COLORS</small>
                     </div>
                   </div>
-                  <h3>Your bead palette</h3>
+                  <h3 className="panel-heading">▣ Bead inventory</h3>
                   <div className="palette">
                     {counts.map((c) => (
                       <div key={c.code}>
@@ -534,11 +558,11 @@ function App() {
                   </div>
                 </section>
                 <section className="card">
-                  <h2>Find your rhythm</h2>
+                  <h2 className="panel-heading">⚑ Beading strategy</h2>
                   <Strategy p={p} update={updateRoute} />
                   <div className="recommend">
                     <b>
-                      ✦ A little suggestion <small>EXPERIMENTAL</small>
+                      ✦ Route hint <small>EXPERIMENTAL</small>
                     </b>
                     <p>
                       {rec.strategy === "row"
@@ -566,7 +590,7 @@ function App() {
                       fit();
                     }}
                   >
-                    Start Beading →
+                    START BEADING →
                   </button>
                 </section>
               </div>
@@ -682,7 +706,7 @@ function App() {
                 </div>
                 <small>
                   {done} / {total} beads ·{" "}
-                  {error ? "Unsaved" : "Saved on this device"}
+                  {error ? "Unsaved" : "Preview saves on this device"}
                 </small>
               </div>
             </div>
@@ -854,7 +878,15 @@ function App() {
                           : "→"}
                     </button>
                   </div>
-                  <button onClick={() => focus()}>⌖ Focus step</button>
+                  <button
+                    className="console-focus-step"
+                    title="Focus current step"
+                    aria-label="Focus step"
+                    onClick={() => focus()}
+                  >
+                    ⌖ <span>Focus step</span>
+                  </button>
+                  {actionButtons}
                 </div>
               </section>
               {phone ? (
@@ -865,6 +897,7 @@ function App() {
                   selected={selectedCell}
                   settings={routeSettings}
                   showEmpty={showEmpty}
+                  extras={extraControls}
                   canUndo={!!undo.length}
                   onUndo={undoLast}
                   onStepComplete={() =>
@@ -950,6 +983,7 @@ function App() {
                     aria-label="Task details"
                     tabIndex={0}
                   >
+                    {extraControls}
                     <div className="palette step-counts">
                       {stats(cells, p.palette)
                         .filter((c) => c.count)
@@ -1019,7 +1053,7 @@ function App() {
       </main>
       <footer>
         <span className="logo">✿ pindou</span>
-        <span>A little less counting. A little more joy.</span>
+        <span>V1.5 design experiment · preview-only saves</span>
         <span>Made for your own pace. ✦</span>
       </footer>
     </>

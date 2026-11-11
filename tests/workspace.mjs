@@ -13,10 +13,10 @@ const page = await browser.newPage({
   hasTouch: true,
 });
 page.on("pageerror", (error) => errors.push(error.message));
-const url = process.env.PINDOU_TEST_URL || "http://127.0.0.1:5173/pindou/";
+const url = process.env.PINDOU_TEST_URL || "http://127.0.0.1:4301/pindou-preview/";
 const snapshot = () =>
   page.evaluate(() => {
-    const project = JSON.parse(localStorage.getItem("pindou.projects.v1"))[0];
+    const project = JSON.parse(localStorage.getItem("pindou.preview.v15.projects.v1"))[0];
     return {
       completed: project.grid
         .filter((c) => c.isCompleted)
@@ -53,8 +53,8 @@ try {
   await page.waitForTimeout(200);
   await page.waitForFunction(() => window.scrollY > 0);
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.getByRole("button", { name: "Try Sample Pattern ↗" }).click();
-  await page.getByRole("button", { name: "Start Beading →" }).click();
+  await page.getByRole("button", { name: "START" }).click();
+  await page.getByRole("button", { name: "START BEADING →" }).click();
   await page.locator(".stage").scrollIntoViewIfNeeded();
   const initial = await snapshot();
   assert.equal(

@@ -1,3 +1,4 @@
+import {PROJECT_STORAGE_KEY} from './storage.ts';
 export const palette = [
   { code: "P1", name: "Petal pink", hex: "#EFA4B7" },
   { code: "G1", name: "Leaf green", hex: "#A7CB8C" },
@@ -191,7 +192,7 @@ export function isProject(value: unknown): value is Project {
 export function loadProjects(): Project[] {
   try {
     const raw: unknown = JSON.parse(
-      localStorage.getItem("pindou.projects.v1") ?? "[]",
+      localStorage.getItem(PROJECT_STORAGE_KEY) ?? "[]",
     );
     return Array.isArray(raw) ? raw.filter(isProject) : [];
   } catch {

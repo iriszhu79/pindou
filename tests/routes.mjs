@@ -7,7 +7,7 @@ const browser = await chromium.launch({
     ? { executablePath: process.env.CHROMIUM_PATH }
     : {}),
 });
-const url = process.env.PINDOU_TEST_URL || "http://127.0.0.1:5173/pindou/";
+const url = process.env.PINDOU_TEST_URL || "http://127.0.0.1:4301/pindou-preview/";
 const p = {
   ...createProject(),
   id: "legacy-sparse",
@@ -36,7 +36,7 @@ async function open(projects) {
   });
   await context.addInitScript(
     (projects) =>
-      localStorage.setItem("pindou.projects.v1", JSON.stringify(projects)),
+      localStorage.setItem("pindou.preview.v15.projects.v1", JSON.stringify(projects)),
     projects,
   );
   const page = await context.newPage();
@@ -45,13 +45,13 @@ async function open(projects) {
 }
 const current = (page) =>
   page.evaluate(
-    () => JSON.parse(localStorage.getItem("pindou.projects.v1"))[0],
+    () => JSON.parse(localStorage.getItem("pindou.preview.v15.projects.v1"))[0],
   );
 try {
   let { page, context } = await open([p, other]);
   assert.deepEqual(
     await page.evaluate(() =>
-      JSON.parse(localStorage.getItem("pindou.projects.v1")),
+      JSON.parse(localStorage.getItem("pindou.preview.v15.projects.v1")),
     ),
     [p, other],
   );
@@ -160,7 +160,7 @@ try {
     0,
   );
   const stored = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("pindou.projects.v1")),
+    JSON.parse(localStorage.getItem("pindou.preview.v15.projects.v1")),
   );
   assert.equal(
     stored.find((v) => v.id === p.id).grid.filter((c) => c.isCompleted).length,

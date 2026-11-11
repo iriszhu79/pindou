@@ -7,7 +7,7 @@ const browser = await chromium.launch({
     ? { executablePath: process.env.CHROMIUM_PATH }
     : {}),
 });
-const url = process.env.PINDOU_TEST_URL || "http://127.0.0.1:5173/pindou/";
+const url = process.env.PINDOU_TEST_URL || "http://127.0.0.1:4301/pindou-preview/";
 const widths = [
   [375, 667],
   [390, 844],
@@ -31,8 +31,8 @@ try {
     };
     await context.addInitScript(
       (projects) => {
-        if (!localStorage.getItem("pindou.projects.v1"))
-          localStorage.setItem("pindou.projects.v1", JSON.stringify(projects));
+        if (!localStorage.getItem("pindou.preview.v15.projects.v1"))
+          localStorage.setItem("pindou.preview.v15.projects.v1", JSON.stringify(projects));
       },
       [project, backup],
     );
@@ -49,7 +49,7 @@ try {
     await page.goto(url);
     assert.deepEqual(
       await page.evaluate(() =>
-        JSON.parse(localStorage.getItem("pindou.projects.v1")),
+        JSON.parse(localStorage.getItem("pindou.preview.v15.projects.v1")),
       ),
       [project, backup],
     );
@@ -57,7 +57,7 @@ try {
     await page.evaluate(() => document.fonts.ready);
     const current = () =>
       page.evaluate(
-        () => JSON.parse(localStorage.getItem("pindou.projects.v1"))[0],
+        () => JSON.parse(localStorage.getItem("pindou.preview.v15.projects.v1"))[0],
       );
     const completed = async () =>
       (await current()).grid
@@ -509,7 +509,7 @@ try {
     assert.equal((await current()).strategy, saved.strategy);
     assert.deepEqual(
       await page.evaluate(() =>
-        JSON.parse(localStorage.getItem("pindou.projects.v1")).find(
+        JSON.parse(localStorage.getItem("pindou.preview.v15.projects.v1")).find(
           (p) => p.id === "preserved-backup",
         ),
       ),

@@ -4,6 +4,7 @@ import { stepCells, stats, stepLabel, type Cell, type Project } from "./model";
 import { StepPositions } from "./StepTools";
 type Props = {
   p: Project;
+  extras?: ReactNode;
   expanded: boolean;
   setExpanded: (value: boolean) => void;
   selected: Cell | null;
@@ -17,6 +18,7 @@ type Props = {
 };
 export function MobileDrawer({
   p,
+  extras,
   expanded,
   setExpanded,
   selected,
@@ -209,6 +211,7 @@ export function MobileDrawer({
           </p>
         )}
         <StepPositions p={p} />
+        {extras}
         <h3>Choose your route</h3>
         {settings}
         <button className="undo full" disabled={!canUndo} onClick={onUndo}>

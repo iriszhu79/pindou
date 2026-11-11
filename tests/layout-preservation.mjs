@@ -6,7 +6,7 @@ assert.ok(
   baseline,
   "Set PINDOU_BASELINE_URL to the read-only main snapshot preview.",
 );
-const current = process.env.PINDOU_TEST_URL || "http://127.0.0.1:5173/pindou/";
+const current = process.env.PINDOU_TEST_URL || "http://127.0.0.1:4301/pindou-preview/";
 const browser = await chromium.launch({
   headless: true,
   ...(process.env.CHROMIUM_PATH
@@ -34,7 +34,7 @@ try {
         });
         await context.addInitScript(
           (p) =>
-            localStorage.setItem("pindou.projects.v1", JSON.stringify([p])),
+            localStorage.setItem("pindou.preview.v15.projects.v1", JSON.stringify([p])),
           p,
         );
         const page = await context.newPage();
