@@ -437,3 +437,217 @@ main.workspace-main {
   outline: 2px solid #bc7591;
   outline-offset: -2px;
 }
+/* V1.3: inspection is separate from placed-bead progress. */
+.workspace-route {
+  flex: none;
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  padding: 0 4px;
+}
+.workspace-route label {
+  font-size: 10px;
+  color: #79747c;
+}
+.workspace-route select {
+  display: block;
+  margin: 3px 0 0;
+  padding: 8px;
+  min-height: 44px;
+  width: auto;
+  max-width: 100%;
+  font-size: 11px;
+}
+.workspace-route .show-empty {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  gap: 5px;
+  color: #292638;
+}
+.show-empty input {
+  width: 18px;
+  height: 18px;
+  accent-color: #6f8d55;
+}
+.selection-context {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 2px solid #efa4b7;
+  background: #fff6f7;
+}
+.selection-context > div {
+  flex: 1;
+  min-width: 0;
+}
+.selection-context strong,
+.selection-context span {
+  display: block;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.selection-context span {
+  color: #716473;
+}
+.workspace-main .selection-context button {
+  padding: 7px;
+  font-size: 11px;
+}
+.workspace-main .selection-context .clear-selection {
+  min-width: 44px;
+  font-size: 20px;
+}
+.selected-action {
+  background: #fae4eb;
+}
+.stage [role="gridcell"] {
+  outline: none;
+}
+.stage [role="gridcell"]:focus-visible > rect {
+  stroke: #292638;
+  stroke-width: 3;
+  stroke-dasharray: 3 2;
+}
+.workspace-main .step-title {
+  font: bold 16px monospace !important;
+  line-height: 1.4 !important;
+}
+.workspace-main .task-panel .step-nav > span {
+  display: none;
+}
+.focus-route {
+  display: none;
+}
+.finished-banner {
+  border: 1px solid #6f8d55;
+  padding: 6px;
+  font: 11px monospace;
+  background: #e2ebd6;
+  margin-bottom: 6px;
+}
+.workspace-main.focus-mode .workspace-route {
+  display: none;
+}
+.workspace-main.focus-mode .focus-route {
+  display: block;
+  width: 105px;
+  flex: none;
+  margin: 0;
+  min-height: 44px;
+  padding: 6px;
+  font-size: 11px;
+}
+.workspace-main.focus-mode .workspace-heading > div:first-child {
+  display: none;
+}
+.workspace-main.focus-mode .workspace {
+  grid-template-columns: minmax(0, 1fr) 220px;
+}
+.workspace-main.focus-mode .task-panel {
+  display: grid;
+  align-content: start;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+}
+.workspace-main.focus-mode .task-heading,
+.workspace-main.focus-mode .color-chips,
+.workspace-main.focus-mode .remaining-summary,
+.workspace-main.focus-mode .finished-banner {
+  grid-column: 1 / -1;
+}
+.workspace-main.focus-mode .remaining-summary {
+  margin: 0;
+}
+.workspace-main.focus-mode .remaining-summary span {
+  display: none;
+}
+.workspace-main.focus-mode .task-panel .step-nav {
+  margin: 0;
+  gap: 4px;
+}
+.workspace-main.focus-mode .task-panel .step-nav button {
+  font-size: 10px;
+  padding: 6px 3px;
+}
+.workspace-main.focus-mode .complete-action {
+  font-size: 10px;
+  padding: 6px;
+}
+@media (max-width: 1000px) and (orientation: portrait) {
+  .workspace-main.focus-mode .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-route {
+    gap: 6px;
+  }
+  .workspace-route > label {
+    flex: 1;
+    min-width: 0;
+  }
+  .workspace-route select {
+    width: 100%;
+    font-size: 10px;
+    padding: 6px;
+  }
+  .workspace-route .show-empty {
+    flex: 0 1 85px;
+    font-size: 10px;
+  }
+  .selection-context {
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px;
+  }
+  .selection-context > div {
+    flex-basis: 140px;
+  }
+  .workspace-main .selection-context button {
+    font-size: 10px;
+  }
+}
+@media (orientation: landscape) and (max-height: 540px) {
+  .workspace-route {
+    gap: 8px;
+  }
+  .workspace-route label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .workspace-route select {
+    margin: 0;
+  }
+  .workspace-main.focus-mode .workspace {
+    grid-template-columns: minmax(0, 1fr) 210px;
+  }
+  .workspace-main .step-title {
+    font-size: 13px !important;
+  }
+  .selection-context strong,
+  .selection-context span {
+    font-size: 10px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .selection-context .selected-action:active {
+    animation: complete-feedback 0.25s ease-out;
+  }
+}
+.workspace-main .selection-context {
+  flex-wrap: nowrap;
+  height: 68px;
+  min-height: 68px;
+}
+.selection-context p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.selection-context strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
